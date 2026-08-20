@@ -5,3 +5,6 @@ packages:
 # Vitest depends on it, so tests cannot execute without this.
 allowBuilds:
   esbuild: true
+  # Next.js's optional image-optimization binary. This UI is text/data, not
+  # images, so there is nothing for it to optimize.
+  sharp: false

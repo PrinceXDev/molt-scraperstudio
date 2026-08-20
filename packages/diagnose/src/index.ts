@@ -13,3 +13,10 @@
 export { diagnose, HEAL_PROMPT_MAX_CHARS, type Diagnosis, type DiagnoseOptions } from './prompt.js';
 
 export { code, count, fieldWord, isoDate, magnitude, nameList, percent } from './format.js';
+
+export {
+  buildReviewRows,
+  isSampleTooSmallToCompare,
+  COMPARABLE_SAMPLE_RATIO,
+  type ReviewRow,
+} from './review.js';

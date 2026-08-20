@@ -417,6 +417,92 @@ v2 must still contain `class="entry"` and `class="entry-title"`, and still rende
 
 ---
 
+## 2026-08-20 · The web UI's Fleet page showed a false-green fill rate for a zeroed field
+
+Built the Next.js web UI (`apps/web`) — Fleet, Collector heatmap, Incident timeline, and the Heal
+Review screen with real Server Actions calling `Engine.decide`. Wiring the pages against the live
+database (rather than fixtures) immediately surfaced two real bugs, both only visible with real data.
+
+**First.** The Fleet page's per-field sparkline used raw `field.rate` from the latest snapshot. For
+`comment_count` and `download_count` — zeroed by the chaos v2 layout — that rate is **100%**, because a
+zeroed field fills on every row. The card rendered a wall of green while an incident banner two lines
+above it said `2 of 8 fields returned only zeros`. This is the exact false-green signal the whole project
+exists to catch, reproduced inside the project's own UI.
+
+**Decision.** Extracted the heatmap's baseline-comparison classification (`lib/heatmap.ts`) into a
+`cellLabel` helper and used it on the Fleet page too: a zeroed field now reads `ZEROED` in bold red,
+never a percentage. Every place a fill rate is shown next to a classified verdict must use this, not
+the raw rate.
+
+---
+
+## 2026-08-20 · `resolveCliEntry` broke under webpack; the web UI's Approve button did nothing
+
+The most important bug this project has found, because it reproduces the project's own thesis inside
+itself: an action that reported success while doing nothing.
+
+**What happened.** Deployed a fresh chaos v3 break, drove it through `molt watch` to a genuine
+`awaiting_approval` incident, then clicked **Approve** in the browser for real. The Server Action
+returned 200 in 192ms — far too fast for a real `bdata scraper approve` call, which takes seconds. The
+incident stayed `awaiting_approval`. Checking the stored command directly found the truth:
+
+```
+exitCode: 1
+stderr: Error: Cannot find module
+  'D:\...\Scrape-Verse\apps\node_modules\.pnpm\@brightdata+cli@0.3.5...\dist\index.js'
+```
+
+Note `apps\node_modules` — not `apps\web\node_modules`, not the workspace root. That path has never
+existed.
+
+**Cause.** `resolveCliEntry()` (`packages/brightdata/src/command.ts`) resolves the CLI via
+`createRequire(import.meta.url)`. That works when the module runs as plain ESM — the `molt` CLI via
+`tsx`, or a Vitest run — because `import.meta.url` is a real file URL. Once webpack bundles
+`@molt/brightdata` into the Next.js server build (it sits behind `transpilePackages`, needed so its
+TypeScript source gets parsed at all), `import.meta.url` stops pointing at anything on disk. It still
+produces a syntactically valid-looking path, which is exactly why `createRequire(...).resolve(...)`
+did not throw — it happily resolved to a phantom location and returned successfully, and the real
+failure only surfaced one step later, when Node tried to load that path as a subprocess and it did not
+exist.
+
+**Consequence.** `Engine.decide()` recorded the failed command, and then compounded the problem: it
+responded with the `heal.failed` trigger, which is only legal from the `healing` state. From
+`awaiting_approval` the transition machine correctly refused it —
+`refused.heal.failed no heal is in flight in awaiting_approval` — and returned the incident **unchanged**,
+with no exception raised. The Server Action resolved normally. The click produced no visible effect at
+all, and there was nothing on screen to say why.
+
+**Decisions.**
+
+1. `resolveCliEntry()` now verifies every candidate path with `existsSync` before returning it — a
+   resolved string is no longer trusted just because resolution did not throw — and falls back to
+   `findCliEntryFrom(process.cwd())`, a pure filesystem walk up from the working directory looking for
+   `node_modules/@brightdata/cli/dist/index.js`. `process.cwd()` is stable under every runtime this
+   package runs in; no bundler can rewrite it the way it rewrites `import.meta.url`.
+2. `Engine.decide()` no longer applies a state transition when the approve/reject **call itself** fails.
+   It throws instead, with an explicit message, and leaves the incident at the gate — retryable, not
+   corrupted. This is deliberate: a transport failure is not a decision about the fix, and forcing every
+   caller to handle a thrown error is what makes a silent "nothing happened" impossible.
+3. `DecisionButtons` (the web UI) gained a `try`/`catch` around both calls, since a Server Action that
+   throws needs somewhere for the message to land — it did not have one when this fired for real.
+
+**Verified fixed on real infrastructure, not just by test.** Redeployed the same v3 break, drove it to
+`awaiting_approval` again, clicked Approve in the browser again. This time: `POST … 200 in 6400ms` — a
+realistic duration — and the incident closed `resolved`. The Fleet page went back to all-green,
+correctly, because the collector was genuinely healthy again. The full sequence, including the original
+failure, is permanently on the incident's own timeline: a `heal.failed` at 73ms/exit 1, immediately
+followed by a working approve at 2,841ms/exit 0 — the incident's audit trail recording the bug that
+happened while building the tool that watches for bugs.
+
+**Test debt this closed.** The engine test fixture had an `approveFails` config flag that had never
+actually been exercised by a test — the exact gap that let a real bug reach a live click before a unit
+test caught it. Added three tests: the throw itself, that the incident state is left untouched, and that
+the failed command is still recorded for the transcript. Also added `findCliEntryFrom` as an exported,
+directly-testable pure function, with tests that build a fake `node_modules` tree under `os.tmpdir()`
+rather than depending on this repository's own installed dependencies.
+
+---
+
 ## 2026-08-20 · SQLite over Postgres
 
 **Decision:** libSQL + Drizzle, file-backed, committed schema, no external service.

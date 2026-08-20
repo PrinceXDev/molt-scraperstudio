@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { redactArgv, redactText } from './redact.js';
 
@@ -44,6 +45,31 @@ export interface SpawnOptions {
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 
 /**
+ * Walk upward from `startDir` looking for a directory containing
+ * `node_modules/@brightdata/cli/dist/index.js`.
+ *
+ * A purely filesystem-based fallback for when `createRequire(import.meta.url)`
+ * cannot be trusted — see the note on {@link resolveCliEntry}. `process.cwd()`
+ * is stable across every runtime this package runs under (tsx, a bundled
+ * Next.js server, a plain `node` process), so anchoring the walk there instead
+ * of on the calling module's URL sidesteps the bundler entirely.
+ */
+export function findCliEntryFrom(startDir: string): string | null {
+  let dir = startDir;
+
+  for (let depth = 0; depth < 10; depth += 1) {
+    const candidate = join(dir, 'node_modules', '@brightdata', 'cli', 'dist', 'index.js');
+    if (existsSync(candidate)) return candidate;
+
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  return null;
+}
+
+/**
  * Absolute path to the Bright Data CLI's JavaScript entrypoint.
  *
  * Resolved from the pinned dependency rather than shelling out to `npx`, for
@@ -52,6 +78,17 @@ const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
  * file, so it can be run by `node` with **no shell**. Node refuses to spawn
  * `.cmd` shims without `shell: true`, and enabling a shell would let quotes
  * inside a heal prompt be reinterpreted by the command processor.
+ *
+ * `createRequire(import.meta.url)` is the first attempt and works when this
+ * module runs as plain ESM (the CLI via `tsx`, or a test run). It silently
+ * breaks once a bundler is involved: inside the Next.js web UI, webpack
+ * rewrites this module into its server bundle and `import.meta.url` stops
+ * pointing at a real path on disk — it resolved to a phantom
+ * `apps/node_modules/...` (note: `apps/`, not `apps/web/`) that has never
+ * existed, and `bdata scraper approve` failed with `MODULE_NOT_FOUND` the
+ * first time the web UI's Approve button was actually clicked. The `tsx`-run
+ * CLI never bundles, so this never surfaced there. The fallback walks up from
+ * `process.cwd()` on disk instead, which no bundler can rewrite.
  */
 export function resolveCliEntry(): string {
   const require = createRequire(import.meta.url);
@@ -68,11 +105,18 @@ export function resolveCliEntry(): string {
 
   for (const attempt of attempts) {
     try {
-      return attempt();
+      const found = attempt();
+      // A resolved path is only trustworthy if it actually exists — a mangled
+      // import.meta.url can still produce a syntactically valid path string.
+      if (existsSync(found)) return found;
+      failures.push(`resolved to a non-existent path: ${found}`);
     } catch (error) {
       failures.push(error instanceof Error ? error.message : String(error));
     }
   }
+
+  const viaFilesystem = findCliEntryFrom(resolve(process.cwd()));
+  if (viaFilesystem !== null) return viaFilesystem;
 
   throw new Error(
     `Could not locate the Bright Data CLI. Run \`pnpm install\`.\n${failures.join('\n')}`,

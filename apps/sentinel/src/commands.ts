@@ -1,12 +1,7 @@
 import { projectRows, type UnknownRecord } from '@molt/brightdata';
 import { needsHuman } from '@molt/core';
-import {
-  buildSnapshot,
-  DEFAULT_THRESHOLDS,
-  magnitudeRatio,
-  type FieldStats,
-  type Row,
-} from '@molt/health';
+import { buildReviewRows, isSampleTooSmallToCompare } from '@molt/diagnose';
+import { buildSnapshot, type Row } from '@molt/health';
 import type { IncidentRecord } from '@molt/store';
 
 import { resolveCollector, type Context } from './context.js';
@@ -27,7 +22,6 @@ import {
   statusBadge,
   write,
   writeError,
-  type ReviewRow,
 } from './ui.js';
 
 /** Register the configured collectors so runs have somewhere to land. */
@@ -268,7 +262,7 @@ export async function cmdReview(context: Context, incidentId?: string): Promise<
       rows: preview,
     });
 
-    const rows = buildReviewRows(incident, previewSnapshot.fields);
+    const rows = buildReviewRows(incident.report, previewSnapshot.fields);
 
     write(`\n  ${bold('Proposed fix')} ${dim(`(${preview.length} preview rows)`)}`);
     write(renderReview(rows));
@@ -278,8 +272,7 @@ export async function cmdReview(context: Context, incidentId?: string): Promise<
     const baselineRows = incident.report.baselineRowCount;
     if (
       rows.some((r) => r.measure === 'value') &&
-      baselineRows > 0 &&
-      preview.length / baselineRows < COMPARABLE_SAMPLE_RATIO
+      isSampleTooSmallToCompare(preview.length, baselineRows)
     ) {
       write(
         dim(
@@ -449,120 +442,6 @@ export async function cmdLog(context: Context, limitArg?: string): Promise<numbe
 }
 
 /* ------------------------------------------------------------------ */
-
-/**
- * Recovery is the negation of the fault condition, deliberately using the very
- * same threshold that detected it.
- *
- * Using a stricter bar for recovery than for detection is incoherent, and it bit:
- * a preview that restored `download_count` from 0 to 1,688 was marked as still
- * broken because 1,688 is not within 2× of the baseline median of 20,251.
- *
- * It was never within 2×, and it did not need to be. **The preview carries 2 rows;
- * the baseline was computed over 60.** Medians across samples of such different
- * sizes are not comparable — the first two entries of the page simply have smaller
- * download counts than the page's midpoint. So a field that was *zeroed* has
- * recovered when it is no longer zero, and a field that was *rescaled* has
- * recovered when it is back inside the detection factor.
- */
-const DISTORTION_FACTOR = DEFAULT_THRESHOLDS.distortionFactor;
-
-/**
- * Below this ratio of preview rows to baseline rows, magnitude comparisons carry
- * a caveat in the output rather than being presented as equivalent.
- */
-const COMPARABLE_SAMPLE_RATIO = 0.25;
-
-/**
- * Build the three-column review from the incident's report and the preview.
- *
- * The per-field choice of measure is the important part: a field that was zeroed
- * fills on every row in all three columns, so only its typical value can show
- * either the fault or the repair.
- */
-function buildReviewRows(
-  incident: IncidentRecord,
-  previewFields: readonly FieldStats[],
-): ReviewRow[] {
-  const previewByField = new Map(previewFields.map((f) => [f.field, f]));
-
-  const rows: ReviewRow[] = incident.report.findings.map((finding) => {
-    const stat = previewByField.get(finding.field);
-    const previewRate = stat?.rate ?? 0;
-    const previewMagnitude = stat?.magnitude ?? 0;
-
-    switch (finding.kind) {
-      case 'distorted': {
-        const wasZeroed = finding.currentMagnitude === 0 && finding.baselineMagnitude !== 0;
-
-        return {
-          field: finding.field,
-          measure: 'value',
-          baseline: finding.baselineMagnitude,
-          broken: finding.currentMagnitude,
-          preview: previewMagnitude,
-          recovered: wasZeroed
-            ? previewMagnitude !== 0
-            : magnitudeRatio(finding.baselineMagnitude, previewMagnitude) < DISTORTION_FACTOR,
-          wasFaulty: true,
-        };
-      }
-
-      case 'collapsed':
-        return {
-          field: finding.field,
-          measure: 'fill',
-          baseline: finding.baselineRate,
-          broken: finding.currentRate,
-          preview: previewRate,
-          recovered: previewRate >= 0.9,
-          wasFaulty: true,
-        };
-
-      case 'degraded':
-        return {
-          field: finding.field,
-          measure: 'fill',
-          baseline: finding.baselineRate,
-          broken: finding.currentRate,
-          preview: previewRate,
-          recovered: previewRate >= 0.9,
-          wasFaulty: true,
-        };
-
-      case 'vanished':
-        return {
-          field: finding.field,
-          measure: 'fill',
-          baseline: finding.baselineRate,
-          broken: 0,
-          preview: previewRate,
-          recovered: previewRate >= 0.9,
-          wasFaulty: true,
-        };
-
-      case 'healthy':
-      case 'appeared': {
-        const rate = finding.kind === 'healthy' ? finding.rate : finding.currentRate;
-        return {
-          field: finding.field,
-          measure: 'fill',
-          baseline: rate,
-          broken: rate,
-          preview: previewRate,
-          // Not a fault, but a regression here would still matter — a heal that
-          // fixes two fields and breaks a third is not a success.
-          recovered: previewRate >= 0.9,
-          wasFaulty: false,
-        };
-      }
-    }
-  });
-
-  return rows.sort(
-    (a, b) => Number(b.wasFaulty) - Number(a.wasFaulty) || a.field.localeCompare(b.field),
-  );
-}
 
 async function findIncident(context: Context, incidentId?: string): Promise<IncidentRecord | null> {
   if (incidentId !== undefined && incidentId !== '') {

@@ -27,6 +27,8 @@ export {
 } from './envelopes.js';
 
 export {
+  findCliEntryFrom,
+  formatDisplay,
   parseJsonFromStdout,
   resolveCliEntry,
   runCli,
