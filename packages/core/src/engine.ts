@@ -390,9 +390,21 @@ export class Engine {
     await this.recordCommand(outcome.command, incident.id, collector.id);
 
     if (outcome.command.failed) {
-      return this.applyTrigger(incident, 'heal.failed', {
-        detail: outcome.envelope.error ?? 'approve call failed',
-      });
+      // Deliberately not a state transition. This is a transport failure — the
+      // CLI call itself could not complete (a crash, a network error, the
+      // one-refactor-job-per-collector 409) — not a decision about the fix, and
+      // there is no trigger for it from `awaiting_approval`: `heal.failed` is
+      // only legal from `healing`. An earlier version applied it anyway, the
+      // machine correctly refused the transition and logged
+      // `refused.heal.failed`, and the incident was left silently stuck at the
+      // gate with no indication anything had gone wrong — first caught when the
+      // web UI's Approve button produced no visible effect. Throwing here
+      // instead forces every caller to surface the failure and leaves the
+      // incident retryable at the gate rather than corrupting its state.
+      throw new Error(
+        `bdata scraper ${reject ? 'reject' : 'approve'} failed for ${collector.id}: ` +
+          `${outcome.envelope.error ?? `exit ${String(outcome.command.exitCode)}`}`,
+      );
     }
 
     return this.applyTrigger(incident, reject ? 'approve.rejected' : 'approve.accepted', {

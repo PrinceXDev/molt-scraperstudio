@@ -1,3 +1,4 @@
+import type { ReviewRow } from '@molt/diagnose';
 import type { FaultFinding, HealthReport } from '@molt/health';
 import type { IncidentState } from '@molt/store';
 
@@ -118,18 +119,11 @@ export function renderFaults(faults: readonly FaultFinding[]): string {
  * 100% in all three columns and says nothing — the typical value is the only
  * thing that reveals the fault, and therefore the only thing that can show it
  * repaired.
+ *
+ * The row shape itself lives in `@molt/diagnose` — the web UI renders the same
+ * rows in its heal-review screen, and this logic has already produced two real
+ * bugs, so there is exactly one implementation rather than two that can drift.
  */
-export interface ReviewRow {
-  readonly field: string;
-  /** `fill` compares presence; `value` compares the typical magnitude. */
-  readonly measure: 'fill' | 'value';
-  readonly baseline: number;
-  readonly broken: number;
-  readonly preview: number;
-  readonly recovered: boolean;
-  readonly wasFaulty: boolean;
-}
-
 function cell(value: number, measure: ReviewRow['measure'], width: number): string {
   const text = measure === 'fill' ? percent(value) : formatNumber(value);
   return text.padStart(width);

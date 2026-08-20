@@ -137,7 +137,12 @@ class FakeScraper implements ScraperPort {
     if (this.config.approveFails === true) {
       return {
         envelope: { collector_id: COLLECTOR, status: 'failed', error: 'resume failed' },
-        command: command({ exitCode: 1, failed: true, stderr: 'resume failed' }),
+        command: command({
+          display: `bdata scraper ${request.reject === true ? 'reject' : 'approve'} ${COLLECTOR} --json`,
+          exitCode: 1,
+          failed: true,
+          stderr: 'resume failed',
+        }),
       };
     }
 
@@ -400,6 +405,68 @@ describe('rejection', () => {
     const incidentId = (await engine.check(COLLECTOR)).incident?.id ?? '';
 
     await expect(engine.decide(incidentId, 'approve')).rejects.toThrow('not awaiting approval');
+  });
+});
+
+describe('a transport failure on approve or reject', () => {
+  // Real bug, real cause: when the `bdata scraper approve` call itself failed
+  // (a crash, a network error, the CLI not resolving under a bundler — see
+  // `resolveCliEntry`), the engine responded with the `heal.failed` trigger.
+  // That trigger is only legal from `healing`, not `awaiting_approval`, so the
+  // transition machine correctly refused it and logged
+  // `refused.heal.failed` — and the incident was left silently stuck at the
+  // gate with no indication anything had gone wrong. First caught when the web
+  // UI's Approve button produced no visible effect at all.
+  it('throws rather than silently leaving the incident stuck', async () => {
+    const { engine } = await setup({
+      runs: [healthyRows(), brokenRows()],
+      healMode: 'gate',
+      approveFails: true,
+    });
+
+    await engine.check(COLLECTOR);
+    const incidentId = (await engine.check(COLLECTOR)).incident?.id ?? '';
+    await engine.advanceUntilBlocked(incidentId);
+
+    await expect(engine.decide(incidentId, 'approve')).rejects.toThrow(
+      'bdata scraper approve failed',
+    );
+  });
+
+  it('leaves the incident retryable at the gate rather than corrupting its state', async () => {
+    const { engine } = await setup({
+      runs: [healthyRows(), brokenRows()],
+      healMode: 'gate',
+      approveFails: true,
+    });
+
+    await engine.check(COLLECTOR);
+    const incidentId = (await engine.check(COLLECTOR)).incident?.id ?? '';
+    await engine.advanceUntilBlocked(incidentId);
+
+    await expect(engine.decide(incidentId, 'approve')).rejects.toThrow();
+
+    const incident = await repo.getIncident(incidentId);
+    expect(incident?.state).toBe('awaiting_approval');
+    expect(incident?.closedAt).toBeNull();
+  });
+
+  it('still records the failed command for the transcript', async () => {
+    const { engine } = await setup({
+      runs: [healthyRows(), brokenRows()],
+      healMode: 'gate',
+      approveFails: true,
+    });
+
+    await engine.check(COLLECTOR);
+    const incidentId = (await engine.check(COLLECTOR)).incident?.id ?? '';
+    await engine.advanceUntilBlocked(incidentId);
+
+    await expect(engine.decide(incidentId, 'approve')).rejects.toThrow();
+
+    const [command] = await repo.listRecentCommands(1);
+    expect(command?.display).toContain('scraper approve');
+    expect(command?.failed).toBe(true);
   });
 });
 
