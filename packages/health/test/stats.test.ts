@@ -185,3 +185,31 @@ describe('buildSnapshot', () => {
     expect(buildSnapshot({ collectorId: 'c_test', capturedAt, rows }).errorRows).toBe(1);
   });
 });
+
+describe('distinct counting', () => {
+  it('counts distinct present values, ignoring absent rows', () => {
+    const rows: Row[] = [
+      { status: 'active' },
+      { status: 'active' },
+      { status: 'archived' },
+      { status: null },
+      { status: '' },
+    ];
+
+    const stats = computeFieldStats('status', rows);
+
+    expect(stats.distinct).toBe(2);
+    expect(stats.present).toBe(3);
+  });
+
+  it('keeps a numeric string distinct from the number it spells', () => {
+    // Flipping between the two is a shape question, not a variety question.
+    const stats = computeFieldStats('v', [{ v: 1 }, { v: '1' }]);
+    expect(stats.distinct).toBe(2);
+  });
+
+  it('counts structured values by their JSON identity', () => {
+    const rows: Row[] = [{ tags: ['a', 'b'] }, { tags: ['a', 'b'] }, { tags: ['c'] }];
+    expect(computeFieldStats('tags', rows).distinct).toBe(2);
+  });
+});

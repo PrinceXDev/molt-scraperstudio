@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import { summariseCredits } from '@molt/brightdata';
+
 import { Badge } from '@/components/Badge';
 import { getContext } from '@/lib/context';
 import { relativeTime } from '@/lib/format';
@@ -18,6 +20,7 @@ function barColorClass(cell: Cell | undefined): string {
       return 'bg-[#5a96ff]';
     case 'degraded':
     case 'distorted':
+    case 'flatlined':
       return 'bg-[var(--warn)]';
     case 'collapsed':
     case 'vanished':
@@ -48,7 +51,9 @@ export default async function FleetPage() {
         ? buildHeatmap(collector.id, baseline, snapshots)
         : null;
       const open = await repo.getOpenIncident(collector.id);
-      return { collector, snapshots, latest, open, heatmap };
+      const commands = await repo.listCommandsForCollector(collector.id);
+      const credits = summariseCredits(commands);
+      return { collector, snapshots, latest, open, heatmap, credits };
     }),
   );
 
@@ -66,7 +71,7 @@ export default async function FleetPage() {
       )}
 
       <div className="grid grid-cols-1">
-        {rows.map(({ collector, latest, open, heatmap }) => (
+        {rows.map(({ collector, latest, open, heatmap, credits }) => (
           <Link key={collector.id} href={`/c/${collector.id}`} className="card block">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -139,7 +144,14 @@ export default async function FleetPage() {
                   ? `${latest.rowCount} rows · last run ${relativeTime(latest.capturedAt)}`
                   : 'no runs yet'}
               </span>
-              {open && <span>{open.report.summary}</span>}
+              <span className="flex items-center gap-2.5">
+                {open && <span>{open.report.summary}</span>}
+                {credits.commandCount > 0 && (
+                  <span title="Estimated relative usage — Bright Data publishes no per-operation price list.">
+                    ~{credits.total} credits
+                  </span>
+                )}
+              </span>
             </div>
           </Link>
         ))}

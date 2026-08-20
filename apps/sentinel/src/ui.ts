@@ -99,6 +99,10 @@ export function renderFaults(faults: readonly FaultFinding[]): string {
           return `  ${amber('≠')} ${name}  ${dim(
             `${fault.baselineMagnitude} → ${fault.currentMagnitude}`,
           )}  ${amber('distorted')}`;
+        case 'flatlined':
+          return `  ${amber('⊙')} ${name}  ${dim(
+            `${fault.baselineDistinct} distinct → ${fault.currentDistinct}`,
+          )}  ${amber('flatlined')}`;
         case 'vanished':
           return `  ${red('∅')} ${name}  ${dim(percent(fault.baselineRate))}  ${red('vanished')}`;
       }

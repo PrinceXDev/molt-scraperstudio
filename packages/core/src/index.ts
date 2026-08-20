@@ -7,9 +7,20 @@
  * a fix that did not work — is testable with no API key and no credits spent.
  */
 
-export { Engine, type AdvanceResult, type CheckResult, type EngineOptions } from './engine.js';
+export {
+  Engine,
+  type AdvanceResult,
+  type CheckResult,
+  type EngineOptions,
+  type OnboardRequest,
+  type OnboardResult,
+} from './engine.js';
 
-export { CliScraper, type CliScraperOptions } from './cli-scraper.js';
+export {
+  CliScraper,
+  CREATE_DESCRIPTION_MAX_CHARS,
+  type CliScraperOptions,
+} from './cli-scraper.js';
 
 export { SerialQueue } from './queue.js';
 
@@ -20,6 +31,8 @@ export {
   type ApproveOutcome,
   type ApproveRequest,
   type Clock,
+  type CreateOutcome,
+  type CreateRequest,
   type HealOutcome,
   type HealRequest,
   type RunOutcome,

@@ -143,15 +143,20 @@ route around — and `--auto-approve` exists for when you want it gone.
 
 ### Commands
 
-|                                |                                                  |
-| ------------------------------ | ------------------------------------------------ |
-| `molt init`                    | register the configured collectors               |
-| `molt check [primary\|chaos]`  | run a collector and report on its health         |
-| `molt status`                  | fleet overview with per-field fill-rate history  |
-| `molt watch`                   | advance every open incident as far as it can go  |
-| `molt review [incident]`       | inspect a proposed fix before committing it      |
-| `molt approve` / `molt reject` | decide, then verify                              |
-| `molt log [n]`                 | transcript of every `bdata` command Molt has run |
+|                                          |                                                             |
+| ---------------------------------------- | ----------------------------------------------------------- |
+| `molt init`                              | register the configured collectors                          |
+| `molt add <url> <description>`           | preflight a target, generate a collector, baseline it       |
+| `molt check [primary\|chaos\|c_*]`       | run a collector and report on its health                    |
+| `molt status`                            | fleet overview with per-field fill-rate history              |
+| `molt credits [collector]`               | estimated credit spend, fleet-wide or per collector          |
+| `molt watch`                             | advance every open incident as far as it can go              |
+| `molt review [incident]`                 | inspect a proposed fix before committing it                  |
+| `molt approve` / `molt reject`           | decide, then verify                                          |
+| `molt unblock [collector]`               | reject a pending heal that is blocking new ones               |
+| `molt baseline <show\|set\|reset>`       | manage what "healthy" means for a collector                  |
+| `molt doctor`                            | check the environment is set up to run Molt at all           |
+| `molt log [n]`                           | transcript of every `bdata` command Molt has run             |
 
 Exit codes are CI-shaped: `0` ok, `2` collector broken, `3` awaiting approval.
 
@@ -183,8 +188,8 @@ literally true, and every invocation is recorded verbatim and shown back.
 ## What's verified
 
 ```
-Test Files  11 passed (11)
-     Tests  192 passed (192)
+Test Files  17 passed (17)
+     Tests  298 passed (298)
 ```
 
 Strict TypeScript throughout, including `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.
@@ -198,6 +203,15 @@ The tests exist to protect specific claims:
 - **The retry loop converges.** The state machine is driven with every verify failing, and asserted to
   reach `escalated` rather than looping — an unbounded heal loop is a credit incinerator.
 - **A zeroed field is broken.** Not degraded, however healthy a null check finds it.
+- **A field can lie by going flat, not just by going empty.** A category or numeric field stuck
+  repeating a single value — variance silently gone to zero — is caught even though fill rate and
+  magnitude both wave it through.
+- **A heal is judged against a page it never saw.** When a collector has a held-out canary URL,
+  verification only closes the incident once the previously-broken fields recover there too, not just
+  on the page the heal was written against.
+- **Approving a fix is not the same as saving it.** Missing `--auto-save` on `scraper approve` silently
+  leaves the production template untouched — the exact bug this project caught inside its own code
+  before a demo depended on it (see `docs/DECISIONS.md`).
 
 ## What went wrong along the way
 

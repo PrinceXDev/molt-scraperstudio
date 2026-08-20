@@ -9,15 +9,21 @@ why things are the way they are.
 ## Collector IDs — pinned
 
 **Do not create new collectors.** Generation takes 5–25 minutes, is subject to a concurrent-job cap,
-and a failed attempt leaves an orphan that cannot be deleted programmatically. Use these.
+and a failed attempt leaves an orphan that cannot be deleted programmatically. Use these — both are
+live.
 
 | Role    | Collector ID           | Target                                         |
-| ------- | ---------------------- | ---------------------------------------------- |
+| ------- | ---------------------- | ----------------------------------------------- |
 | Primary | `c_mt0z2fn11aj6lk4bdz` | `https://www.postgresql.org/support/security/` |
-| Chaos   | _pending deploy_       | `apps/chaos` static build, public URL          |
+| Chaos   | `c_mt101cvbc0o34ghzh`  | `https://molt-chaos.vercel.app`                |
 
-Orphaned half-built collectors awaiting manual deletion in the dashboard:
+Orphaned half-built collectors awaiting manual deletion in the dashboard (unrelated to the two above —
+these are dead ends from the rejected Tailscale target, see `docs/DECISIONS.md`):
 `c_mt0yykpt1qye2ry05d`, `c_mt0z0aeu8heabltr2`.
+
+`molt add <url> <description>` now exists for onboarding further collectors at runtime (preflights size
++ robots.txt first) — use it instead of `bdata scraper create` directly, and still expect 5–25 minutes
+per call.
 
 ## The CLI
 
@@ -59,3 +65,12 @@ pnpm test          # offline, no credentials needed
 pnpm typecheck
 pnpm --filter @molt/chaos build -- --version 2   # flip the chaos layout
 ```
+
+The `molt` CLI (`apps/sentinel`) has grown beyond the original loop commands
+(`init`, `check`, `status`, `watch`, `review`, `approve`, `reject`): `add` (onboard a new collector,
+preflighted), `credits` (estimated spend, fleet-wide or per collector — see
+`packages/brightdata/src/credits.ts` for why it's an estimate, not a bill), `baseline`
+(`show`/`set`/`reset` what "healthy" means for a collector), `doctor` (environment preflight — Node
+version, CLI resolvable, DB reachable, every registered target still reachable), `unblock` (clear a
+stuck heal), and `log`. Run `pnpm molt help` for the full, current list rather than trusting this file
+to stay in sync with it.

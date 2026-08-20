@@ -124,6 +124,7 @@ export function computeFieldStats(field: string, rows: readonly Row[]): FieldSta
   let present = 0;
   const shapes: ValueShape[] = [];
   const values: unknown[] = [];
+  const distinctKeys = new Set<string>();
 
   for (const row of rows) {
     const value = row[field];
@@ -132,6 +133,7 @@ export function computeFieldStats(field: string, rows: readonly Row[]): FieldSta
     present += 1;
     shapes.push(shapeOf(value));
     values.push(value);
+    distinctKeys.add(distinctKeyOf(value));
   }
 
   const shape = dominantShape(shapes);
@@ -146,8 +148,27 @@ export function computeFieldStats(field: string, rows: readonly Row[]): FieldSta
     total,
     rate: total === 0 ? 0 : present / total,
     shape,
+    distinct: distinctKeys.size,
     magnitude: shape === 'mixed' ? null : median(magnitudes),
   };
+}
+
+/**
+ * A stable identity for counting distinct values.
+ *
+ * Strings prefixed to keep `"1"` and `1` distinct — a field flipping between
+ * the two is a shape question, not a variety question — while objects and
+ * lists fall back to their JSON form, which is deterministic enough for
+ * cardinality even if key order could theoretically differ.
+ */
+function distinctKeyOf(value: unknown): string {
+  if (typeof value === 'string') return `s:${value.trim()}`;
+  if (typeof value === 'number' || typeof value === 'boolean') return `p:${String(value)}`;
+  try {
+    return `j:${JSON.stringify(value)}`;
+  } catch {
+    return 'j:unserialisable';
+  }
 }
 
 /** Every non-envelope key appearing across `rows`, in stable sorted order. */

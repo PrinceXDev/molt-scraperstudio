@@ -42,6 +42,19 @@ export interface FieldStats {
   readonly rate: number;
   readonly shape: ValueShape;
   /**
+   * Number of distinct present values observed in the sample.
+   *
+   * This is what catches a field whose variance has silently gone to zero: a
+   * `status` that used to carry twelve categories and now only ever says
+   * `"active"` fills on every row, keeps its magnitude, and passes every other
+   * check — only the collapse in cardinality reveals it.
+   *
+   * Optional because snapshots persisted before this field existed rehydrate
+   * without it; comparison logic must treat its absence as "unknown", never as
+   * zero.
+   */
+  readonly distinct?: number;
+  /**
    * Central tendency of the field's values, when one is meaningful:
    * the median for numbers, the median character length for text, the median
    * element count for lists. `null` for shapes with no useful magnitude.
@@ -120,6 +133,20 @@ export type FieldFinding =
       readonly currentMagnitude: number;
       readonly ratio: number;
     }
+  /**
+   * Still filling at a plausible magnitude, but every row now carries the same
+   * single value where the baseline had genuine variety. The signature of a
+   * template stamping one entry's value across the page, or a categorical
+   * field stuck on its default — variance drift that fill rate and magnitude
+   * both wave through.
+   */
+  | {
+      readonly kind: 'flatlined';
+      readonly field: string;
+      readonly rate: number;
+      readonly baselineDistinct: number;
+      readonly currentDistinct: number;
+    }
   /** Present in the baseline, absent from the candidate's schema entirely. */
   | {
       readonly kind: 'vanished';
@@ -136,7 +163,7 @@ export type FieldFinding =
 /** Findings that represent something actually wrong. */
 export type FaultFinding = Extract<
   FieldFinding,
-  { kind: 'collapsed' | 'degraded' | 'distorted' | 'vanished' }
+  { kind: 'collapsed' | 'degraded' | 'distorted' | 'flatlined' | 'vanished' }
 >;
 
 /** Overall health of a collector, worst-case across its fields. */
@@ -194,6 +221,14 @@ export interface HealthThresholds {
    */
   readonly distortionFactor: number;
   /**
+   * A field only counts as `flatlined` when the baseline carried at least this
+   * many distinct values *and* the current sample has at least this many
+   * present rows to show variety in. Guards against flagging fields that are
+   * legitimately near-constant, and against judging variance from a sample too
+   * small to have any. Default `5`.
+   */
+  readonly flatlineMinDistinct: number;
+  /**
    * Row count must fall to at most this fraction of baseline to count as an
    * empty harvest. Default `0.1`.
    */
@@ -205,5 +240,6 @@ export const DEFAULT_THRESHOLDS: HealthThresholds = {
   collapseCeiling: 0.1,
   degradeDrop: 0.3,
   distortionFactor: 4,
+  flatlineMinDistinct: 5,
   emptyHarvestFloor: 0.1,
 };

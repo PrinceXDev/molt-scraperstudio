@@ -1,4 +1,10 @@
-import type { ApproveEnvelope, CommandRecord, HealEnvelope, UnknownRecord } from '@molt/brightdata';
+import type {
+  ApproveEnvelope,
+  CommandRecord,
+  CreateEnvelope,
+  HealEnvelope,
+  UnknownRecord,
+} from '@molt/brightdata';
 
 /**
  * The effects the engine needs, as interfaces.
@@ -28,6 +34,11 @@ export interface ApproveOutcome {
   readonly command: CommandRecord;
 }
 
+export interface CreateOutcome {
+  readonly envelope: CreateEnvelope;
+  readonly command: CommandRecord;
+}
+
 export interface RunRequest {
   readonly collectorId: string;
   readonly url: string;
@@ -47,11 +58,19 @@ export interface ApproveRequest {
   readonly reject?: boolean;
 }
 
+export interface CreateRequest {
+  readonly url: string;
+  /** What to extract, in plain language. The CLI caps this at 500 chars. */
+  readonly description: string;
+}
+
 /** Everything Molt does to a Bright Data collector. */
 export interface ScraperPort {
   run(request: RunRequest): Promise<RunOutcome>;
   heal(request: HealRequest): Promise<HealOutcome>;
   approve(request: ApproveRequest): Promise<ApproveOutcome>;
+  /** Generate a brand-new collector. An AI-Flow job: 5–25 minutes, serialised. */
+  create(request: CreateRequest): Promise<CreateOutcome>;
 }
 
 /**

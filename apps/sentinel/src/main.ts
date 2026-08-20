@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 import { openContext } from './context.js';
 import {
+  cmdAdd,
+  cmdBaseline,
   cmdCheck,
+  cmdCredits,
   cmdDecide,
+  cmdDoctor,
   cmdInit,
   cmdLog,
   cmdReview,
@@ -24,13 +28,17 @@ const USAGE = `
 ${bold('molt')} ${dim('— Scraper Reliability Engineering for Bright Data Scraper Studio')}
 
   ${bold('molt init')}                     register the configured collectors
-  ${bold('molt check')} [primary|chaos]    run a collector and report on its health
+  ${bold('molt doctor')}                   check the environment is set up to run Molt at all
+  ${bold('molt add')} <url> <description…>  preflight a target, generate a collector, baseline it
+  ${bold('molt check')} [primary|chaos|c_*] run a collector and report on its health
   ${bold('molt status')}                   fleet overview with per-field fill-rate history
+  ${bold('molt credits')} [collector]       estimated credit spend, fleet-wide or per collector
   ${bold('molt watch')}                    advance every open incident as far as it can go
   ${bold('molt review')} [incident]        inspect a proposed fix before committing it
   ${bold('molt approve')} [incident]       commit the fix, then verify it actually worked
   ${bold('molt reject')} [incident]        decline the fix and try a sharper prompt
   ${bold('molt unblock')} [collector]      reject a pending heal that is blocking new ones
+  ${bold('molt baseline')} <show|set|reset> [collector] [snapshotId]  manage what "healthy" means
   ${bold('molt log')} [n]                  transcript of every bdata command Molt has run
 
 ${dim('Exit codes:')} 0 ok · 1 usage · 2 collector broken · 3 awaiting approval
@@ -51,10 +59,16 @@ async function main(argv: readonly string[]): Promise<number> {
     switch (command) {
       case 'init':
         return await cmdInit(context);
+      case 'doctor':
+        return await cmdDoctor(context);
+      case 'add':
+        return await cmdAdd(context, rest);
       case 'check':
         return await cmdCheck(context, rest[0]);
       case 'status':
         return await cmdStatus(context);
+      case 'credits':
+        return await cmdCredits(context, rest[0]);
       case 'watch':
         return await cmdWatch(context);
       case 'review':
@@ -65,6 +79,8 @@ async function main(argv: readonly string[]): Promise<number> {
         return await cmdDecide(context, 'reject', rest[0]);
       case 'unblock':
         return await cmdUnblock(context, rest[0]);
+      case 'baseline':
+        return await cmdBaseline(context, rest);
       case 'log':
         return await cmdLog(context, rest[0]);
       default:

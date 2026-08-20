@@ -1,10 +1,19 @@
 import {
+  isFailureStatus,
   isHealBlocked,
   projectRows,
   type CommandRecord,
+  type CreateEnvelope,
   type UnknownRecord,
 } from '@molt/brightdata';
-import { diagnose } from '@molt/diagnose';
+import {
+  buildReviewRows,
+  costOfSilence,
+  describeCostOfSilence,
+  diagnose,
+  learnPromptPreferences,
+  type HealAttemptOutcome,
+} from '@molt/diagnose';
 import {
   buildSnapshot,
   compareSnapshots,
@@ -50,6 +59,23 @@ export interface AdvanceResult {
   /** Null when nothing could be done: at the gate, terminal, or in flight. */
   readonly performed: Trigger | null;
   readonly note: string;
+}
+
+export interface OnboardRequest {
+  readonly url: string;
+  /** What to extract, in plain language. ≤500 chars — the CLI's own cap. */
+  readonly description: string;
+  /** Display name. Defaults to the target's hostname. */
+  readonly name?: string;
+  /** Held-out URL for canary verification, if the target has a second page. */
+  readonly canaryUrl?: string | null;
+}
+
+export interface OnboardResult {
+  /** Null when generation failed — the envelope says why. */
+  readonly collector: CollectorRecord | null;
+  readonly envelope: CreateEnvelope;
+  readonly command: CommandRecord;
 }
 
 const DEFAULT_MAX_ATTEMPTS = 2;
@@ -219,6 +245,61 @@ export class Engine {
   }
 
   /* ---------------------------------------------------------------- *
+   * Onboarding
+   * ---------------------------------------------------------------- */
+
+  /**
+   * Generate a new collector for a target URL and register it.
+   *
+   * The caller is expected to have run the target preflight first
+   * (`preflightTarget` in `@molt/brightdata`) — a failed generation cannot be
+   * cleaned up programmatically and leaves an orphan in the dashboard, which
+   * is why the size and robots checks exist at all.
+   *
+   * On success the collector is saved as kind `custom` with no projection;
+   * if its output turns out to be nested, `recordPath` can be set on the
+   * record afterwards. The first `check()` then establishes its baseline.
+   */
+  async createCollector(request: OnboardRequest): Promise<OnboardResult> {
+    const outcome = await this.scraper.create({
+      url: request.url,
+      description: request.description,
+    });
+
+    // The transcript records the attempt either way — a failed create with an
+    // orphaned collector id is precisely the thing worth being able to audit.
+    await this.repo.saveCommand({
+      collectorId: null,
+      display: outcome.command.display,
+      argv: outcome.command.argv,
+      startedAt: outcome.command.startedAt,
+      finishedAt: outcome.command.finishedAt,
+      durationMs: outcome.command.durationMs,
+      exitCode: outcome.command.exitCode,
+      stdout: outcome.command.stdout,
+      stderr: outcome.command.stderr,
+      failed: outcome.command.failed,
+    });
+
+    const failed = outcome.command.failed || isFailureStatus(outcome.envelope.status);
+
+    if (failed) {
+      return { collector: null, envelope: outcome.envelope, command: outcome.command };
+    }
+
+    const collector = await this.repo.saveCollector({
+      id: outcome.envelope.collector_id,
+      name: request.name ?? hostnameOf(request.url),
+      targetUrl: request.url,
+      kind: 'custom',
+      canaryUrl: request.canaryUrl ?? null,
+      createdAt: this.clock.now().toISOString(),
+    });
+
+    return { collector, envelope: outcome.envelope, command: outcome.command };
+  }
+
+  /* ---------------------------------------------------------------- *
    * Progression
    * ---------------------------------------------------------------- */
 
@@ -284,7 +365,13 @@ export class Engine {
     const moved = await this.applyTrigger(incident, 'diagnose.start');
     if (moved.state !== 'diagnosing') return moved;
 
-    const diagnosis = diagnose(incident.report);
+    // Every closed incident with a heal prompt is a labelled outcome: did that
+    // prompt land first-try? The learner turns them into a preference for the
+    // next prompt, and stays silent (null) until the history is thick enough
+    // to mean anything — so a fresh install behaves exactly like the
+    // deterministic template always has.
+    const preferences = learnPromptPreferences(await this.healOutcomeHistory(incident.id));
+    const diagnosis = diagnose(incident.report, { preferences });
     const at = this.clock.now().toISOString();
 
     await this.repo.appendEvent({
@@ -297,10 +384,36 @@ export class Engine {
         targetFields: diagnosis.targetFields,
         unaffectedFields: diagnosis.unaffectedFields,
         truncated: diagnosis.truncated,
+        learning: preferences,
       },
     });
 
     return this.repo.patchIncident(incident.id, { healPrompt: diagnosis.prompt });
+  }
+
+  /**
+   * Past heal outcomes, for the prompt learner.
+   *
+   * Only closed incidents count — an open one has not delivered its verdict —
+   * and the incident being diagnosed is excluded so it cannot learn from
+   * itself on a retry.
+   */
+  private async healOutcomeHistory(excludeIncidentId: string): Promise<HealAttemptOutcome[]> {
+    const incidents = await this.repo.listIncidents(200);
+
+    return incidents
+      .filter(
+        (i) =>
+          i.id !== excludeIncidentId &&
+          i.closedAt !== null &&
+          i.healPrompt !== null &&
+          i.healPrompt !== '',
+      )
+      .map((i) => ({
+        prompt: i.healPrompt ?? '',
+        resolved: i.state === 'resolved',
+        attempts: i.attempts,
+      }));
   }
 
   /** Call `bdata scraper heal` and route the outcome back into the machine. */
@@ -453,6 +566,13 @@ export class Engine {
    * recovery of the fill rates closes an incident. When it does, the recovered
    * snapshot is promoted to baseline — otherwise every later run would be
    * compared against a pre-breakage world and alarm forever.
+   *
+   * When the collector has a canary URL, recovery on the primary target is
+   * necessary but not sufficient: the fixed scraper must also recover the
+   * previously-broken fields on a page the heal never saw. A heal is judged
+   * against the page whose evidence produced it, so it can overfit — and an
+   * overfitted fix is exactly the kind of "looks green, still wrong" outcome
+   * this stage exists to refuse.
    */
   private async runVerify(incident: IncidentRecord): Promise<IncidentRecord> {
     const moved = await this.applyTrigger(incident, 'verify.start');
@@ -461,23 +581,127 @@ export class Engine {
     const check = await this.check(incident.collectorId);
     const recovered = check.report === null || check.report.status === 'healthy';
 
-    if (recovered) {
-      await this.repo.setBaseline(check.snapshotId);
-
-      const resolved = await this.applyTrigger(moved, 'verify.recovered', {
-        detail: check.report?.summary ?? 'baseline re-established',
-        patch: { verifiedRunId: check.runId },
+    if (!recovered) {
+      // Note that `check` above has already reconciled the incident against the
+      // fresh report, so the next diagnosis describes what is wrong *now* rather
+      // than repeating the prompt that just failed.
+      return this.applyTrigger(moved, 'verify.failed', {
+        detail: check.report?.summary ?? 'still broken',
       });
-
-      return resolved;
     }
 
-    // Note that `check` above has already reconciled the incident against the
-    // fresh report, so the next diagnosis describes what is wrong *now* rather
-    // than repeating the prompt that just failed.
-    return this.applyTrigger(moved, 'verify.failed', {
-      detail: check.report?.summary ?? 'still broken',
+    const canary = await this.runCanary(moved);
+
+    if (canary !== null && !canary.passed) {
+      return this.applyTrigger(moved, 'verify.failed', {
+        detail: `recovered on the primary target, but not on the canary: ${canary.detail}`,
+      });
+    }
+
+    await this.repo.setBaseline(check.snapshotId);
+
+    const cost = await this.costOfSilenceFor(incident);
+
+    const resolved = await this.applyTrigger(moved, 'verify.recovered', {
+      detail:
+        `${check.report?.summary ?? 'baseline re-established'}` +
+        (canary === null ? '' : '; canary passed') +
+        ` — ${describeCostOfSilence(cost)}`,
+      patch: { verifiedRunId: check.runId },
     });
+
+    return resolved;
+  }
+
+  /**
+   * How long this incident served bad data, and to how many runs, measured
+   * from when it opened to right now — the moment it is about to close.
+   *
+   * "Bad runs" counts every check that observed the collector still broken
+   * while the incident was open (`detected` plus `observed.still-broken`),
+   * which is the number of times a downstream consumer would actually have
+   * been handed the wrong data — a sharper number than "the incident was
+   * open for 3 hours" alone, since a 6-hour cron cadence and a 5-minute one
+   * make very different incidents out of the same duration.
+   */
+  private async costOfSilenceFor(incident: IncidentRecord) {
+    const events = await this.repo.listEvents(incident.id);
+    const badRuns = events.filter(
+      (e) => e.kind === 'detected' || e.kind === 'observed.still-broken',
+    ).length;
+
+    // The exact instant this incident is about to be stamped closed — passed
+    // as both `closedAt` and `now` so the phrasing reads in the past tense
+    // ("was wrong for", not "has been wrong for … so far"), matching the
+    // permanent record it is about to become.
+    const closingAt = this.clock.now().toISOString();
+
+    return costOfSilence({
+      openedAt: incident.openedAt,
+      closedAt: closingAt,
+      now: closingAt,
+      badRuns,
+    });
+  }
+
+  /**
+   * Run the collector against its held-out canary URL and judge the result.
+   *
+   * Returns `null` when the collector has no canary configured. The judgement
+   * reuses `buildReviewRows` — the same negation-of-the-fault logic, at the
+   * same thresholds, that judges a preview at the approval gate. Magnitudes on
+   * a different page legitimately differ, which is exactly the sample-size
+   * lesson from the review screen, and why the bar is "the fault condition is
+   * gone" rather than "matches the baseline".
+   */
+  private async runCanary(
+    incident: IncidentRecord,
+  ): Promise<{ passed: boolean; detail: string } | null> {
+    const collector = await this.requireCollector(incident.collectorId);
+    const canaryUrl = collector.canaryUrl;
+    if (canaryUrl === null || canaryUrl === '') return null;
+
+    const outcome = await this.scraper.run({ collectorId: collector.id, url: canaryUrl });
+    await this.recordCommand(outcome.command, incident.id, collector.id);
+
+    const rows = this.project(collector, outcome.rows);
+    const at = this.clock.now().toISOString();
+
+    // Deliberately not saved as a run or snapshot: the canary is a different
+    // page, and letting its shape into the collector's history would poison
+    // both the heatmap and any future baseline.
+    if (outcome.command.failed || rows.length === 0) {
+      const detail = outcome.command.failed
+        ? 'the canary run itself failed'
+        : `the canary returned 0 rows from ${canaryUrl}`;
+
+      await this.repo.appendEvent({
+        incidentId: incident.id,
+        at,
+        kind: 'verify.canary',
+        detail,
+        payload: { passed: false, canaryUrl, rowCount: rows.length },
+      });
+
+      return { passed: false, detail };
+    }
+
+    const snapshot = buildSnapshot({ collectorId: collector.id, capturedAt: at, rows });
+    const review = buildReviewRows(incident.report, snapshot.fields);
+    const unrecovered = review.filter((r) => r.wasFaulty && !r.recovered).map((r) => r.field);
+    const passed = unrecovered.length === 0;
+
+    await this.repo.appendEvent({
+      incidentId: incident.id,
+      at,
+      kind: 'verify.canary',
+      detail: passed
+        ? `every previously-broken field also recovers on ${canaryUrl} (${rows.length} rows)`
+        : `still wrong on the canary: ${unrecovered.join(', ')}`,
+      payload: { passed, canaryUrl, rowCount: rows.length, unrecovered },
+    });
+
+    return { passed, detail: unrecovered.join(', ') || 'ok' };
   }
 
   /* ---------------------------------------------------------------- *
@@ -592,4 +816,12 @@ function toSnapshot(
 function isGate(status: string): boolean {
   const normalised = status.trim().toLowerCase();
   return normalised === 'awaiting_approval' || normalised === 'awaiting-approval';
+}
+
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
 }

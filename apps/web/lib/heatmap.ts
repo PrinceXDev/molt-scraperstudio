@@ -90,6 +90,7 @@ const CELL_COLOR: Record<CellKind, string> = {
   appeared: '#5a96ff',
   degraded: 'var(--warn)',
   distorted: 'var(--warn)',
+  flatlined: 'var(--warn)',
   collapsed: 'var(--bad)',
   vanished: 'var(--bad)',
 };
@@ -120,6 +121,7 @@ export function cellOpacity(cell: Cell | undefined): number {
 export function cellLabel(cell: Cell | undefined): string {
   if (cell === undefined) return '—';
   if (cell.kind === 'distorted' && cell.magnitude === 0) return 'ZEROED';
+  if (cell.kind === 'flatlined') return 'FLAT';
   if (cell.kind === 'vanished') return 'GONE';
   return `${Math.round(cell.rate * 100)}%`;
 }

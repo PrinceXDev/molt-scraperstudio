@@ -1,17 +1,21 @@
 import {
   approveEnvelopeSchema,
+  createEnvelopeSchema,
   extractRows,
   healEnvelopeSchema,
   parseJsonFromStdout,
   runCli,
   type ApproveEnvelope,
   type CommandRecord,
+  type CreateEnvelope,
   type HealEnvelope,
 } from '@molt/brightdata';
 
 import type {
   ApproveOutcome,
   ApproveRequest,
+  CreateOutcome,
+  CreateRequest,
   HealOutcome,
   HealRequest,
   RunOutcome,
@@ -41,6 +45,12 @@ export interface CliScraperOptions {
    */
   readonly queue?: SerialQueue;
 }
+
+/**
+ * `bdata scraper create` rejects a description longer than this.
+ * Verified from `bdata scraper create --help`.
+ */
+export const CREATE_DESCRIPTION_MAX_CHARS = 500;
 
 export class CliScraper implements ScraperPort {
   private readonly timeoutMs: number | undefined;
@@ -124,6 +134,32 @@ export class CliScraper implements ScraperPort {
     };
   }
 
+  async create(request: CreateRequest): Promise<CreateOutcome> {
+    // Fail here, not at the API: `bdata scraper create --help` documents a
+    // 500-char cap, and a rejected create still costs a queue slot and leaves
+    // a confusing transcript entry.
+    if (request.description.length > CREATE_DESCRIPTION_MAX_CHARS) {
+      throw new Error(
+        `create description is ${String(request.description.length)} chars; ` +
+          `the CLI caps it at ${String(CREATE_DESCRIPTION_MAX_CHARS)}`,
+      );
+    }
+
+    // Queued with heal/approve: create is an AI-Flow job behind the same
+    // account-wide 429 concurrency cap, and it can legitimately run 25 minutes.
+    const command = await this.aiFlow.add(() =>
+      this.exec(['scraper', 'create', request.url, request.description, '--json']),
+    );
+
+    return {
+      // `c_pending` is a placeholder for the rare case of a create that died
+      // before the CLI printed any envelope — a real create returns its
+      // collector_id even on failure, because the template is made first.
+      envelope: this.parseEnvelope(command, createEnvelopeSchema, 'c_pending') as CreateEnvelope,
+      command,
+    };
+  }
+
   private async exec(args: readonly string[]): Promise<CommandRecord> {
     return runCli({
       args,
@@ -141,9 +177,9 @@ export class CliScraper implements ScraperPort {
    */
   private parseEnvelope(
     command: CommandRecord,
-    schema: typeof healEnvelopeSchema | typeof approveEnvelopeSchema,
+    schema: typeof healEnvelopeSchema | typeof approveEnvelopeSchema | typeof createEnvelopeSchema,
     collectorId: string,
-  ): HealEnvelope | ApproveEnvelope {
+  ): HealEnvelope | ApproveEnvelope | CreateEnvelope {
     const parsed = schema.safeParse(parseJsonFromStdout(command.stdout));
     if (parsed.success) return parsed.data;
 
