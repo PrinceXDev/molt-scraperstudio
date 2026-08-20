@@ -1,0 +1,35 @@
+node_modules/
+dist/
+.next/
+out/
+build/
+
+# Local env — never commit credentials
+.env
+.env.local
+.env.*.local
+
+# Molt local state
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+.molt/
+
+# Bright Data CLI scratch output
+create.json
+heal.json
+run.json
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Test + build artifacts
+coverage/
+*.tsbuildinfo
+.turbo/

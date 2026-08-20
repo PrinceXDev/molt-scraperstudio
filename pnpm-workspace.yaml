@@ -1,0 +1,7 @@
+packages:
+  - 'packages/*'
+  - 'apps/*'
+# esbuild ships a prebuilt native binary and needs its install script to run.
+# Vitest depends on it, so tests cannot execute without this.
+allowBuilds:
+  esbuild: true

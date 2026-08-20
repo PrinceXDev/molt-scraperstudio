@@ -1,0 +1,29 @@
+{
+  "name": "molt",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Scraper Reliability Engineering for Bright Data Scraper Studio — detect silent breakage, heal it, verify the fix.",
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter './packages/*' run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@brightdata/cli": "^0.3.5",
+    "@types/node": "^22.10.5",
+    "eslint": "^9.18.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^3.0.2"
+  }
+}
