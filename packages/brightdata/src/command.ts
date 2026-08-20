@@ -150,7 +150,7 @@ export async function runCli(options: SpawnOptions): Promise<CommandRecord> {
     argv: safeArgv,
     // The node path and CLI entry are noise in a transcript; show the shape a
     // human would actually type.
-    display: ['bdata', ...redactArgv(args, env)].join(' '),
+    display: formatDisplay(redactArgv(args, env)),
     startedAt,
     finishedAt: finishedAtDate.toISOString(),
     durationMs: Math.max(0, finishedAtDate.getTime() - startedAtDate.getTime()),
@@ -160,6 +160,28 @@ export async function runCli(options: SpawnOptions): Promise<CommandRecord> {
     failed: timedOut || exitCode !== 0,
     timedOut,
   };
+}
+
+/** Longest argument shown in full before it is elided. */
+const MAX_DISPLAY_ARG = 56;
+
+/**
+ * Render argv as a line a human could have typed.
+ *
+ * Heal prompts run to several hundred characters, and pasting one verbatim into
+ * a transcript buries the command in prose — the full prompt is recorded on the
+ * incident and shown deliberately elsewhere. Arguments containing whitespace are
+ * quoted so the line stays copy-pasteable.
+ */
+export function formatDisplay(args: readonly string[]): string {
+  const rendered = args.map((arg) => {
+    const shortened =
+      arg.length > MAX_DISPLAY_ARG ? `${arg.slice(0, MAX_DISPLAY_ARG).trimEnd()}…` : arg;
+
+    return /\s/.test(shortened) ? `"${shortened}"` : shortened;
+  });
+
+  return ['bdata', ...rendered].join(' ');
 }
 
 /**

@@ -11,6 +11,7 @@ import {
   isAwaitingApproval,
   isCollectorId,
   isFailureStatus,
+  isHealBlocked,
   isSuccessStatus,
 } from '../src/envelopes.js';
 
@@ -100,6 +101,54 @@ describe('heal envelope', () => {
   it('is case- and separator-insensitive about the gate status', () => {
     expect(isAwaitingApproval({ status: 'Awaiting_Approval' })).toBe(true);
     expect(isAwaitingApproval({ status: ' awaiting-approval ' })).toBe(true);
+  });
+});
+
+describe('isHealBlocked', () => {
+  // Scraper Studio allows one refactor job per collector. The real stderr:
+  const STDERR_409 =
+    'Triggering self-healing...\n' +
+    'Failed to start self-healing for collector c_mt101cvbc0o34ghzh: Error: Another refactor job is still in progress\n' +
+    '  Status: 409\n';
+
+  it('recognises the envelope status', () => {
+    expect(isHealBlocked({ status: 'heal_trigger_failed' })).toBe(true);
+  });
+
+  it('recognises the message even without the status', () => {
+    expect(isHealBlocked({ status: 'failed' }, STDERR_409)).toBe(true);
+  });
+
+  it('does not confuse it with an ordinary failure', () => {
+    // The distinction is load-bearing: an ordinary failure consumes a retry
+    // attempt, a blocked heal must not, because retrying cannot help.
+    expect(isHealBlocked({ status: 'failed' }, 'AI generation failed')).toBe(false);
+    expect(isHealBlocked({ status: 'awaiting_approval' })).toBe(false);
+    expect(isHealBlocked({ status: 'done' })).toBe(false);
+  });
+});
+
+describe('the real awaiting_approval envelope', () => {
+  // Captured from a genuine heal of c_mt101cvbc0o34ghzh on 2026-08-20.
+  const envelope = healEnvelopeSchema.parse(fixture('heal-awaiting-approval.json'));
+
+  it('stops at the approval gate', () => {
+    expect(isAwaitingApproval(envelope)).toBe(true);
+    expect(isHealBlocked(envelope)).toBe(false);
+  });
+
+  it('carries a preview of what the fixed scraper would return', () => {
+    const rows = extractRows(envelope.preview_result);
+    expect(rows.length).toBeGreaterThan(0);
+  });
+
+  it('names the command that commits it', () => {
+    expect(envelope.next_step).toContain('bdata scraper approve');
+  });
+
+  it('carries the two fields the docs omit', () => {
+    expect(envelope.diff_summary).toContain('proposed template');
+    expect(envelope.completed_steps).toContain('request_fulfillment_validator');
   });
 });
 

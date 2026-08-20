@@ -16,11 +16,7 @@ function healthyRows(count: number): Row[] {
   }));
 }
 
-function snapshot(
-  rows: Row[],
-  capturedAt: string,
-  declaredFields?: readonly string[],
-): Snapshot {
+function snapshot(rows: Row[], capturedAt: string, declaredFields?: readonly string[]): Snapshot {
   return buildSnapshot({
     collectorId: 'c_moltdemo0001',
     capturedAt,
@@ -83,9 +79,7 @@ describe('compareSnapshots', () => {
 
     // Two of four fields lost outright.
     expect(report.score).toBe(50);
-    expect(report.summary).toBe(
-      '2 of 4 fields stopped extracting: comment_count, points',
-    );
+    expect(report.summary).toBe('2 of 4 fields stopped extracting: comment_count, points');
   });
 
   it('classifies a partial drop as degraded rather than broken', () => {
@@ -118,8 +112,10 @@ describe('compareSnapshots', () => {
     expect(report.faults.map((f) => f.kind)).not.toContain('degraded');
   });
 
-  it('catches a field that still fills but has gone wrong', () => {
-    // Every price now reads 0. A null check passes; the data is worthless.
+  it('treats a field zeroed out as broken, not merely degraded', () => {
+    // Observed for real: a relocated field yielded 0 rather than null, so every
+    // null check passed and `download_count: 0` looked entirely plausible. A
+    // hard failure dressed as a soft one.
     const baseRows: Row[] = Array.from({ length: 20 }, (_, i) => ({ price: 1200 + i }));
     const zeroed: Row[] = Array.from({ length: 20 }, () => ({ price: 0 }));
 
@@ -128,15 +124,32 @@ describe('compareSnapshots', () => {
       snapshot(zeroed, CANDIDATE_AT),
     );
 
-    expect(report.status).toBe('degraded');
+    expect(report.status).toBe('broken');
+    expect(report.score).toBe(0);
+    expect(report.summary).toBe('1 of 1 fields returned only zeros: price');
 
     const [fault] = report.faults;
     expect(fault?.kind).toBe('distorted');
     if (fault?.kind === 'distorted') {
       expect(fault.field).toBe('price');
+      // Still filling on every row — which is exactly why it is dangerous.
       expect(fault.rate).toBe(1);
       expect(fault.currentMagnitude).toBe(0);
     }
+  });
+
+  it('keeps a merely rescaled field at degraded', () => {
+    // A tenfold shift is suspicious, not fatal: the values are still values.
+    const baseRows: Row[] = Array.from({ length: 20 }, () => ({ price: 12_000 }));
+    const rescaled: Row[] = Array.from({ length: 20 }, () => ({ price: 120 }));
+
+    const report = compareSnapshots(
+      snapshot(baseRows, BASELINE_AT),
+      snapshot(rescaled, CANDIDATE_AT),
+    );
+
+    expect(report.status).toBe('degraded');
+    expect(report.summary).toBe('1 of 1 fields degraded: price');
   });
 
   it('catches a title truncated to a fragment', () => {

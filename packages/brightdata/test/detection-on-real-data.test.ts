@@ -120,9 +120,7 @@ describe('the silent failure, reproduced on real data', () => {
   });
 
   it('summarises it in a sentence fit for an incident title', () => {
-    expect(report.summary).toBe(
-      '2 of 8 fields stopped extracting: cvss_score, vector_string',
-    );
+    expect(report.summary).toBe('2 of 8 fields stopped extracting: cvss_score, vector_string');
   });
 });
 

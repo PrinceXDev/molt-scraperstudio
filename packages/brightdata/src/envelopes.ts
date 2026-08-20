@@ -63,6 +63,18 @@ export const healEnvelopeSchema = z
     prompt: z.string().optional(),
     next_step: z.string().optional(),
     preview_result: z.unknown().optional(),
+    /**
+     * Short human summary of the proposed change, e.g.
+     * `"proposed template has 1 step(s) — review at view_url"`.
+     */
+    diff_summary: z.string().optional(),
+    /**
+     * Heal pipeline stages. Observed on a real heal:
+     * `planner`, `control_preview_runner`, `code_fixer`, `step_preview_runner`,
+     * `request_fulfillment_validator`, `step_advance`.
+     */
+    completed_steps: z.array(z.string()).optional(),
+    view_url: z.string().optional(),
     error: z.string().optional(),
   })
   .passthrough();
@@ -97,6 +109,32 @@ export function isSuccessStatus(status: string): boolean {
 /** True when a heal has stopped at the approval gate and needs a decision. */
 export function isAwaitingApproval(envelope: { readonly status: string }): boolean {
   return AWAITING_STATUSES.has(envelope.status.trim().toLowerCase());
+}
+
+/**
+ * A heal that was refused because the collector already has one outstanding.
+ *
+ * Scraper Studio permits **one refactor job per collector**, enforced server-side
+ * with an HTTP 409 and an envelope status of `heal_trigger_failed`:
+ *
+ * ```
+ * Failed to start self-healing for collector c_…: Error: Another refactor job is
+ * still in progress
+ *   Status: 409
+ * ```
+ *
+ * This is undocumented and it matters a great deal, because it is *not* the same
+ * as a heal that ran and failed. Nothing was attempted, no credits were spent,
+ * and the scraper is untouched — so retrying is futile until the outstanding heal
+ * is approved or rejected. Treating it as an ordinary failure burns the whole
+ * retry budget in a couple of seconds and escalates for the wrong reason.
+ *
+ * Note this is a different limit from the AI-Flow concurrency cap, which is a 429
+ * across the account and which the CLI retries through on its own.
+ */
+export function isHealBlocked(envelope: { readonly status: string }, stderr = ''): boolean {
+  if (envelope.status.trim().toLowerCase() === 'heal_trigger_failed') return true;
+  return /another refactor job is still in progress/i.test(stderr);
 }
 
 export function isFailureStatus(status: string): boolean {

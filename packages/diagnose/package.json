@@ -1,0 +1,20 @@
+{
+  "name": "@molt/diagnose",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Turns drift evidence into a heal prompt. Pure and deterministic.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "@molt/health": "workspace:*"
+  }
+}

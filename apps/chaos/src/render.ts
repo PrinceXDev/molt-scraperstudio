@@ -8,8 +8,12 @@ import { ENTRIES, type Entry } from './data.js';
  * redesigned during hackathon week.
  *
  * - `1` — the baseline every scraper is built against.
- * - `2` — a class rename that relocates two numeric fields. The values are
- *   still in the DOM, so this is genuinely healable rather than impossible.
+ * - `2` — two numeric fields move out of their named elements into a generic
+ *   `metric-list` keyed by data attribute. The entry container and the title are
+ *   untouched, so **the scraper still finds all 60 rows** and only
+ *   `download_count` and `comment_count` come back empty. This is the silent
+ *   failure: HTTP 200, job done, row count unchanged, data quietly wrong. The
+ *   values remain in the DOM, so it is genuinely healable.
  * - `3` — the values stay where they are but go wrong: downloads read zero and
  *   titles are truncated. Passes a null check, fails the truth test.
  */
@@ -79,13 +83,16 @@ function metricsMarkup(entry: Entry, version: LayoutVersion): string {
 function entryMarkup(entry: Entry, version: LayoutVersion): string {
   const title = escapeHtml(titleFor(entry, version));
 
-  // v2 renames the entry container and swaps the title element for a
-  // data-attribute hook.
-  const containerClass = version === 2 ? 'release-item' : 'entry';
-  const titleMarkup =
-    version === 2
-      ? `<h3 data-test="title" class="release-item__heading">${title}</h3>`
-      : `<h3 class="entry-title">${title}</h3>`;
+  // The container and the title are deliberately stable across every layout.
+  //
+  // An earlier v2 renamed them too, and the result was a scraper that could not
+  // find a single entry — an empty harvest, which is a real failure but the
+  // *easy* one: zero rows is obvious to any monitor. The failure worth
+  // demonstrating is the silent one, where the row count is unchanged, the job
+  // reports done, and two fields are quietly empty. So v2 moves only the
+  // metrics, exactly as a design-system migration would.
+  const containerClass = 'entry';
+  const titleMarkup = `<h3 class="entry-title">${title}</h3>`;
 
   const tags = entry.tags
     .map((tag) => `<li class="tag">${escapeHtml(tag)}</li>`)
@@ -97,8 +104,13 @@ function entryMarkup(entry: Entry, version: LayoutVersion): string {
       : `
         <a class="entry-related" href="${escapeHtml(entry.relatedLink)}">Read the docs</a>`;
 
+  // No `id` on the entry. Scraper Studio's AI treated per-entry anchors as a
+  // discovery surface, constructing one "page" per `#fragment` and re-scraping
+  // the whole document for each — 60 page loads per run instead of 1, and every
+  // record duplicated sixty times. Anchors are navigation as far as the
+  // generator is concerned, even when nothing links to them.
   return `
-      <article class="${containerClass}" id="${escapeHtml(entry.slug)}">
+      <article class="${containerClass}">
         <header>
           <time class="entry-date" datetime="${escapeHtml(entry.date)}">${escapeHtml(entry.date)}</time>
           <span class="entry-version">${escapeHtml(entry.version)}</span>
@@ -145,17 +157,24 @@ const STYLES = `
 
 const VERSION_LABELS: Readonly<Record<LayoutVersion, string>> = {
   1: 'baseline markup',
-  2: 'class rename — two metrics relocated',
+  2: 'two metrics relocated into a generic metric list',
   3: 'values distorted — downloads zeroed, titles truncated',
 };
 
 export interface RenderOptions {
   /**
-   * How the version-switcher links are addressed.
+   * `server` renders a version switcher for local comparison. `static` renders
+   * none at all.
    *
-   * `static` builds link to sibling files, because the deployed site is a
-   * directory of pre-rendered HTML. `server` uses a query string, which is what
-   * the local dev server understands.
+   * This is not cosmetic. The first deployed build linked to `v1.html`,
+   * `v2.html` and `v3.html` so a human could compare layouts — and Scraper
+   * Studio's AI treated those links as a discovery surface, generating a crawler
+   * that followed them and scraped `v3.html`, the deliberately-distorted layout.
+   * The captured baseline was therefore of the wrong page, and flipping
+   * `index.html` would never have been noticed.
+   *
+   * A chaos target must have no outbound navigation whatsoever: exactly one URL,
+   * whose markup changes on deploy.
    */
   readonly mode?: 'static' | 'server';
   readonly entries?: readonly Entry[];
@@ -171,11 +190,16 @@ export interface RenderOptions {
 export function renderPage(version: LayoutVersion, options: RenderOptions = {}): string {
   const { mode = 'server', entries = ENTRIES } = options;
 
-  const nav = LAYOUT_VERSIONS.map((v) => {
-    const href = mode === 'static' ? `v${v}.html` : `?v=${v}`;
-    const current = v === version ? ' aria-current="page"' : '';
-    return `<a href="${href}"${current}>v${v}</a>`;
-  }).join('\n        ');
+  // Deliberately empty in a static build — see `RenderOptions.mode`.
+  const nav =
+    mode === 'server'
+      ? `<nav>
+        ${LAYOUT_VERSIONS.map((v) => {
+          const current = v === version ? ' aria-current="page"' : '';
+          return `<a href="?v=${v}"${current}>v${v}</a>`;
+        }).join('\n        ')}
+        </nav>`
+      : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -195,9 +219,7 @@ export function renderPage(version: LayoutVersion, options: RenderOptions = {}):
       <div class="banner">
         <strong>Layout v${version}</strong> &mdash; ${VERSION_LABELS[version]}.<br />
         This page exists to break scrapers on purpose. The content never changes; only the markup does.
-        <nav>
         ${nav}
-        </nav>
       </div>
 ${entries.map((entry) => entryMarkup(entry, version)).join('\n')}
     </main>

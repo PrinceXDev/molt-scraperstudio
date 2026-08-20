@@ -39,10 +39,12 @@ const SECRET_ENV_KEYS: readonly string[] = [
  * string would mangle unrelated text.
  */
 function environmentSecrets(env: NodeJS.ProcessEnv): string[] {
-  return SECRET_ENV_KEYS.map((key) => env[key])
-    .filter((value): value is string => typeof value === 'string' && value.length >= 8)
-    // Longest first, so a key that contains another is redacted whole.
-    .sort((a, b) => b.length - a.length);
+  return (
+    SECRET_ENV_KEYS.map((key) => env[key])
+      .filter((value): value is string => typeof value === 'string' && value.length >= 8)
+      // Longest first, so a key that contains another is redacted whole.
+      .sort((a, b) => b.length - a.length)
+  );
 }
 
 function escapeRegExp(value: string): string {

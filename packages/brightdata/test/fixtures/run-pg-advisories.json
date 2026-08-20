@@ -1,1 +1,374 @@
-[{"security_advisories":[{"cve_id":"CVE-2026-14681","affected_version":"18","fixed_in":"18.5","component":"core server","cvss_score":"4.2","vector_string":"AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:N","description":"Improper enforcement of message integrity in PostgreSQL GSSAPI support allows a user to negotiate GSSAPI contrary to pg_hba.conf rules, via initial direct TLS connection. Despite a pg_hba.conf that appears to require GSSAPI, the connection may exchange data over TLS encryption alone. If the TLS settings are more permissive than the GSS settings, the connection may continue with lesser protection. Within major versions 17-18, minor versions before PostgreSQL 18.5 and 17.11 are affected. Versions before PostgreSQL 17 are unaffected."},{"cve_id":"CVE-2026-14681","affected_version":"17","fixed_in":"17.11","component":"core server","cvss_score":"4.2","vector_string":"AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:N","description":"Improper enforcement of message integrity in PostgreSQL GSSAPI support allows a user to negotiate GSSAPI contrary to pg_hba.conf rules, via initial direct TLS connection. Despite a pg_hba.conf that appears to require GSSAPI, the connection may exchange data over TLS encryption alone. If the TLS settings are more permissive than the GSS settings, the connection may continue with lesser protection. Within major versions 17-18, minor versions before PostgreSQL 18.5 and 17.11 are affected. Versions before PostgreSQL 17 are unaffected."}],"product_page_url":"https://www.postgresql.org/support/security/CVE-2026-14681/","input":{"url":"https://www.postgresql.org/support/security/"}},{"security_advisories":[{"cve_id":"CVE-2026-6479","affected_version":"18","fixed_in":"18.4","component":"core server","cvss_score":"7.5","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H","description":"Uncontrolled recursion in PostgreSQL SSL and GSS negotiation allows an attacker able to connect to a PostgreSQL AF_UNIX socket to achieve sustained denial of service. If SSL and GSS are both disabled, an attacker can do the same via access to a PostgreSQL TCP socket. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."},{"cve_id":"CVE-2026-6479","affected_version":"17","fixed_in":"17.10","component":"core server","cvss_score":"7.5","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H","description":"Uncontrolled recursion in PostgreSQL SSL and GSS negotiation allows an attacker able to connect to a PostgreSQL AF_UNIX socket to achieve sustained denial of service. If SSL and GSS are both disabled, an attacker can do the same via access to a PostgreSQL TCP socket. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."},{"cve_id":"CVE-2026-6479","affected_version":"16","fixed_in":"16.14","component":"core server","cvss_score":"7.5","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H","description":"Uncontrolled recursion in PostgreSQL SSL and GSS negotiation allows an attacker able to connect to a PostgreSQL AF_UNIX socket to achieve sustained denial of service. If SSL and GSS are both disabled, an attacker can do the same via access to a PostgreSQL TCP socket. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."},{"cve_id":"CVE-2026-6479","affected_version":"15","fixed_in":"15.18","component":"core server","cvss_score":"7.5","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H","description":"Uncontrolled recursion in PostgreSQL SSL and GSS negotiation allows an attacker able to connect to a PostgreSQL AF_UNIX socket to achieve sustained denial of service. If SSL and GSS are both disabled, an attacker can do the same via access to a PostgreSQL TCP socket. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."},{"cve_id":"CVE-2026-6479","affected_version":"14","fixed_in":"14.23","component":"core server","cvss_score":"7.5","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H","description":"Uncontrolled recursion in PostgreSQL SSL and GSS negotiation allows an attacker able to connect to a PostgreSQL AF_UNIX socket to achieve sustained denial of service. If SSL and GSS are both disabled, an attacker can do the same via access to a PostgreSQL TCP socket. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."}],"product_page_url":"https://www.postgresql.org/support/security/CVE-2026-6479/","input":{"url":"https://www.postgresql.org/support/security/"}},{"security_advisories":[{"cve_id":"CVE-2026-14671","affected_version":"18","fixed_in":"18.5","component":"contrib module","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H","description":"Type confusion in PostgreSQL module \"refint\" allows an object creator to execute arbitrary code as the operating system user running the database. The fix for this emerged as a non-security bug report, and the fix appear in the git repository with subject \"refint: Remove plan cache.\", without a CVE number. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-14671","affected_version":"17","fixed_in":"17.11","component":"contrib module","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H","description":"Type confusion in PostgreSQL module \"refint\" allows an object creator to execute arbitrary code as the operating system user running the database. The fix for this emerged as a non-security bug report, and the fix appear in the git repository with subject \"refint: Remove plan cache.\", without a CVE number. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-14671","affected_version":"16","fixed_in":"16.15","component":"contrib module","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H","description":"Type confusion in PostgreSQL module \"refint\" allows an object creator to execute arbitrary code as the operating system user running the database. The fix for this emerged as a non-security bug report, and the fix appear in the git repository with subject \"refint: Remove plan cache.\", without a CVE number. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-14671","affected_version":"15","fixed_in":"15.19","component":"contrib module","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H","description":"Type confusion in PostgreSQL module \"refint\" allows an object creator to execute arbitrary code as the operating system user running the database. The fix for this emerged as a non-security bug report, and the fix appear in the git repository with subject \"refint: Remove plan cache.\", without a CVE number. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-14671","affected_version":"14","fixed_in":"14.24","component":"contrib module","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H","description":"Type confusion in PostgreSQL module \"refint\" allows an object creator to execute arbitrary code as the operating system user running the database. The fix for this emerged as a non-security bug report, and the fix appear in the git repository with subject \"refint: Remove plan cache.\", without a CVE number. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."}],"product_page_url":"https://www.postgresql.org/support/security/CVE-2026-14671/","input":{"url":"https://www.postgresql.org/support/security/"}},{"security_advisories":[{"cve_id":"CVE-2026-15741","affected_version":"18","fixed_in":"18.5","component":"core server","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H","description":"SQL injection in PostgreSQL EXTRACT() deparse allows an object owner to execute arbitrary SQL as a superuser via a hostile object definition. Attacks affect expression deparse consumers broadly, including pg_dump, psql commands like \\sf, and any similar usage in non-core tools. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-15741","affected_version":"17","fixed_in":"17.11","component":"core server","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H","description":"SQL injection in PostgreSQL EXTRACT() deparse allows an object owner to execute arbitrary SQL as a superuser via a hostile object definition. Attacks affect expression deparse consumers broadly, including pg_dump, psql commands like \\sf, and any similar usage in non-core tools. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-15741","affected_version":"16","fixed_in":"16.15","component":"core server","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H","description":"SQL injection in PostgreSQL EXTRACT() deparse allows an object owner to execute arbitrary SQL as a superuser via a hostile object definition. Attacks affect expression deparse consumers broadly, including pg_dump, psql commands like \\sf, and any similar usage in non-core tools. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-15741","affected_version":"15","fixed_in":"15.19","component":"core server","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H","description":"SQL injection in PostgreSQL EXTRACT() deparse allows an object owner to execute arbitrary SQL as a superuser via a hostile object definition. Attacks affect expression deparse consumers broadly, including pg_dump, psql commands like \\sf, and any similar usage in non-core tools. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-15741","affected_version":"14","fixed_in":"14.24","component":"core server","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H","description":"SQL injection in PostgreSQL EXTRACT() deparse allows an object owner to execute arbitrary SQL as a superuser via a hostile object definition. Attacks affect expression deparse consumers broadly, including pg_dump, psql commands like \\sf, and any similar usage in non-core tools. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."}],"product_page_url":"https://www.postgresql.org/support/security/CVE-2026-15741/","input":{"url":"https://www.postgresql.org/support/security/"}},{"security_advisories":[{"cve_id":"CVE-2026-6478","affected_version":"18","fixed_in":"18.4","component":"core server","cvss_score":"6.5","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N","description":"Covert timing channel in comparison of MD5-hashed password in PostgreSQL authentication allows an attacker to recover user credentials sufficient to authenticate. This does not affect scram-sha-256 passwords, the default in all supported releases. However, current databases may have MD5-hashed passwords originating in upgrades from PostgreSQL 13 or earlier. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."},{"cve_id":"CVE-2026-6478","affected_version":"17","fixed_in":"17.10","component":"core server","cvss_score":"6.5","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N","description":"Covert timing channel in comparison of MD5-hashed password in PostgreSQL authentication allows an attacker to recover user credentials sufficient to authenticate. This does not affect scram-sha-256 passwords, the default in all supported releases. However, current databases may have MD5-hashed passwords originating in upgrades from PostgreSQL 13 or earlier. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."},{"cve_id":"CVE-2026-6478","affected_version":"16","fixed_in":"16.14","component":"core server","cvss_score":"6.5","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N","description":"Covert timing channel in comparison of MD5-hashed password in PostgreSQL authentication allows an attacker to recover user credentials sufficient to authenticate. This does not affect scram-sha-256 passwords, the default in all supported releases. However, current databases may have MD5-hashed passwords originating in upgrades from PostgreSQL 13 or earlier. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."},{"cve_id":"CVE-2026-6478","affected_version":"15","fixed_in":"15.18","component":"core server","cvss_score":"6.5","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N","description":"Covert timing channel in comparison of MD5-hashed password in PostgreSQL authentication allows an attacker to recover user credentials sufficient to authenticate. This does not affect scram-sha-256 passwords, the default in all supported releases. However, current databases may have MD5-hashed passwords originating in upgrades from PostgreSQL 13 or earlier. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."},{"cve_id":"CVE-2026-6478","affected_version":"14","fixed_in":"14.23","component":"core server","cvss_score":"6.5","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N","description":"Covert timing channel in comparison of MD5-hashed password in PostgreSQL authentication allows an attacker to recover user credentials sufficient to authenticate. This does not affect scram-sha-256 passwords, the default in all supported releases. However, current databases may have MD5-hashed passwords originating in upgrades from PostgreSQL 13 or earlier. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."}],"product_page_url":"https://www.postgresql.org/support/security/CVE-2026-6478/","input":{"url":"https://www.postgresql.org/support/security/"}},{"security_advisories":[{"cve_id":"CVE-2025-8715","affected_version":"17","fixed_in":"17.6","component":"core server","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H","description":"Improper neutralization of newlines in pg_dump in PostgreSQL allows a user of the origin server to inject arbitrary code for restore-time execution as the client operating system account running psql to restore the dump, via psql meta-commands inside a purpose-crafted object name. The same attacks can achieve SQL injection as a superuser of the restore target server. pg_dumpall, pg_restore, and pg_upgrade are also affected. Versions before PostgreSQL 17.6, 16.10, 15.14, 14.19, and 13.22 are affected. Versions before 11.20 are unaffected. CVE-2012-0868 had fixed this class of problem, but version 11.20 reintroduced it."},{"cve_id":"CVE-2025-8715","affected_version":"16","fixed_in":"16.10","component":"core server","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H","description":"Improper neutralization of newlines in pg_dump in PostgreSQL allows a user of the origin server to inject arbitrary code for restore-time execution as the client operating system account running psql to restore the dump, via psql meta-commands inside a purpose-crafted object name. The same attacks can achieve SQL injection as a superuser of the restore target server. pg_dumpall, pg_restore, and pg_upgrade are also affected. Versions before PostgreSQL 17.6, 16.10, 15.14, 14.19, and 13.22 are affected. Versions before 11.20 are unaffected. CVE-2012-0868 had fixed this class of problem, but version 11.20 reintroduced it."},{"cve_id":"CVE-2025-8715","affected_version":"15","fixed_in":"15.14","component":"core server","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H","description":"Improper neutralization of newlines in pg_dump in PostgreSQL allows a user of the origin server to inject arbitrary code for restore-time execution as the client operating system account running psql to restore the dump, via psql meta-commands inside a purpose-crafted object name. The same attacks can achieve SQL injection as a superuser of the restore target server. pg_dumpall, pg_restore, and pg_upgrade are also affected. Versions before PostgreSQL 17.6, 16.10, 15.14, 14.19, and 13.22 are affected. Versions before 11.20 are unaffected. CVE-2012-0868 had fixed this class of problem, but version 11.20 reintroduced it."},{"cve_id":"CVE-2025-8715","affected_version":"14","fixed_in":"14.19","component":"core server","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H","description":"Improper neutralization of newlines in pg_dump in PostgreSQL allows a user of the origin server to inject arbitrary code for restore-time execution as the client operating system account running psql to restore the dump, via psql meta-commands inside a purpose-crafted object name. The same attacks can achieve SQL injection as a superuser of the restore target server. pg_dumpall, pg_restore, and pg_upgrade are also affected. Versions before PostgreSQL 17.6, 16.10, 15.14, 14.19, and 13.22 are affected. Versions before 11.20 are unaffected. CVE-2012-0868 had fixed this class of problem, but version 11.20 reintroduced it."},{"cve_id":"CVE-2025-8715","affected_version":"13","fixed_in":"13.22","component":"core server","cvss_score":"8.8","vector_string":"AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H","description":"Improper neutralization of newlines in pg_dump in PostgreSQL allows a user of the origin server to inject arbitrary code for restore-time execution as the client operating system account running psql to restore the dump, via psql meta-commands inside a purpose-crafted object name. The same attacks can achieve SQL injection as a superuser of the restore target server. pg_dumpall, pg_restore, and pg_upgrade are also affected. Versions before PostgreSQL 17.6, 16.10, 15.14, 14.19, and 13.22 are affected. Versions before 11.20 are unaffected. CVE-2012-0868 had fixed this class of problem, but version 11.20 reintroduced it."}],"product_page_url":"https://www.postgresql.org/support/security/CVE-2025-8715/","input":{"url":"https://www.postgresql.org/support/security/"}},{"security_advisories":[{"cve_id":"CVE-2026-14679","affected_version":"18","fixed_in":"18.5","component":"core server","cvss_score":"8.2","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H","description":"Stack buffer overflow in PostgreSQL argument name matching allows an object creator to achieve unknown impacts via OUT parameter count. The attack can write only 0x0 and 0x1 bytes. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-14679","affected_version":"17","fixed_in":"17.11","component":"core server","cvss_score":"8.2","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H","description":"Stack buffer overflow in PostgreSQL argument name matching allows an object creator to achieve unknown impacts via OUT parameter count. The attack can write only 0x0 and 0x1 bytes. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-14679","affected_version":"16","fixed_in":"16.15","component":"core server","cvss_score":"8.2","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H","description":"Stack buffer overflow in PostgreSQL argument name matching allows an object creator to achieve unknown impacts via OUT parameter count. The attack can write only 0x0 and 0x1 bytes. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-14679","affected_version":"15","fixed_in":"15.19","component":"core server","cvss_score":"8.2","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H","description":"Stack buffer overflow in PostgreSQL argument name matching allows an object creator to achieve unknown impacts via OUT parameter count. The attack can write only 0x0 and 0x1 bytes. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."},{"cve_id":"CVE-2026-14679","affected_version":"14","fixed_in":"14.24","component":"core server","cvss_score":"8.2","vector_string":"AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H","description":"Stack buffer overflow in PostgreSQL argument name matching allows an object creator to achieve unknown impacts via OUT parameter count. The attack can write only 0x0 and 0x1 bytes. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."}],"product_page_url":"https://www.postgresql.org/support/security/CVE-2026-14679/","input":{"url":"https://www.postgresql.org/support/security/"}},{"security_advisories":[{"cve_id":"CVE-2022-41862","affected_version":"15","fixed_in":"15.2","component":"client","cvss_score":"3.7","vector_string":"AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N","description":"A modified, unauthenticated server can send an unterminated string during the establishment of Kerberos transport encryption. When a libpq client application has a Kerberos credential cache and doesn't explicitly disable option gssencmode , a server can cause libpq to over-read and report an error message containing uninitialized bytes from and following its receive buffer. If libpq's caller somehow makes that message accessible to the attacker, this achieves a disclosure of the over-read bytes. We have not confirmed or ruled out viability of attacks that arrange for a crash or for presence of notable, confidential information in disclosed bytes."},{"cve_id":"CVE-2022-41862","affected_version":"14","fixed_in":"14.7","component":"client","cvss_score":"3.7","vector_string":"AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N","description":"A modified, unauthenticated server can send an unterminated string during the establishment of Kerberos transport encryption. When a libpq client application has a Kerberos credential cache and doesn't explicitly disable option gssencmode , a server can cause libpq to over-read and report an error message containing uninitialized bytes from and following its receive buffer. If libpq's caller somehow makes that message accessible to the attacker, this achieves a disclosure of the over-read bytes. We have not confirmed or ruled out viability of attacks that arrange for a crash or for presence of notable, confidential information in disclosed bytes."},{"cve_id":"CVE-2022-41862","affected_version":"13","fixed_in":"13.10","component":"client","cvss_score":"3.7","vector_string":"AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N","description":"A modified, unauthenticated server can send an unterminated string during the establishment of Kerberos transport encryption. When a libpq client application has a Kerberos credential cache and doesn't explicitly disable option gssencmode , a server can cause libpq to over-read and report an error message containing uninitialized bytes from and following its receive buffer. If libpq's caller somehow makes that message accessible to the attacker, this achieves a disclosure of the over-read bytes. We have not confirmed or ruled out viability of attacks that arrange for a crash or for presence of notable, confidential information in disclosed bytes."},{"cve_id":"CVE-2022-41862","affected_version":"12","fixed_in":"12.14","component":"client","cvss_score":"3.7","vector_string":"AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N","description":"A modified, unauthenticated server can send an unterminated string during the establishment of Kerberos transport encryption. When a libpq client application has a Kerberos credential cache and doesn't explicitly disable option gssencmode , a server can cause libpq to over-read and report an error message containing uninitialized bytes from and following its receive buffer. If libpq's caller somehow makes that message accessible to the attacker, this achieves a disclosure of the over-read bytes. We have not confirmed or ruled out viability of attacks that arrange for a crash or for presence of notable, confidential information in disclosed bytes."}],"product_page_url":"https://www.postgresql.org/support/security/CVE-2022-41862/","input":{"url":"https://www.postgresql.org/support/security/"}}]
+[
+  {
+    "security_advisories": [
+      {
+        "cve_id": "CVE-2026-14681",
+        "affected_version": "18",
+        "fixed_in": "18.5",
+        "component": "core server",
+        "cvss_score": "4.2",
+        "vector_string": "AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:N",
+        "description": "Improper enforcement of message integrity in PostgreSQL GSSAPI support allows a user to negotiate GSSAPI contrary to pg_hba.conf rules, via initial direct TLS connection. Despite a pg_hba.conf that appears to require GSSAPI, the connection may exchange data over TLS encryption alone. If the TLS settings are more permissive than the GSS settings, the connection may continue with lesser protection. Within major versions 17-18, minor versions before PostgreSQL 18.5 and 17.11 are affected. Versions before PostgreSQL 17 are unaffected."
+      },
+      {
+        "cve_id": "CVE-2026-14681",
+        "affected_version": "17",
+        "fixed_in": "17.11",
+        "component": "core server",
+        "cvss_score": "4.2",
+        "vector_string": "AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:N",
+        "description": "Improper enforcement of message integrity in PostgreSQL GSSAPI support allows a user to negotiate GSSAPI contrary to pg_hba.conf rules, via initial direct TLS connection. Despite a pg_hba.conf that appears to require GSSAPI, the connection may exchange data over TLS encryption alone. If the TLS settings are more permissive than the GSS settings, the connection may continue with lesser protection. Within major versions 17-18, minor versions before PostgreSQL 18.5 and 17.11 are affected. Versions before PostgreSQL 17 are unaffected."
+      }
+    ],
+    "product_page_url": "https://www.postgresql.org/support/security/CVE-2026-14681/",
+    "input": { "url": "https://www.postgresql.org/support/security/" }
+  },
+  {
+    "security_advisories": [
+      {
+        "cve_id": "CVE-2026-6479",
+        "affected_version": "18",
+        "fixed_in": "18.4",
+        "component": "core server",
+        "cvss_score": "7.5",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "description": "Uncontrolled recursion in PostgreSQL SSL and GSS negotiation allows an attacker able to connect to a PostgreSQL AF_UNIX socket to achieve sustained denial of service. If SSL and GSS are both disabled, an attacker can do the same via access to a PostgreSQL TCP socket. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-6479",
+        "affected_version": "17",
+        "fixed_in": "17.10",
+        "component": "core server",
+        "cvss_score": "7.5",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "description": "Uncontrolled recursion in PostgreSQL SSL and GSS negotiation allows an attacker able to connect to a PostgreSQL AF_UNIX socket to achieve sustained denial of service. If SSL and GSS are both disabled, an attacker can do the same via access to a PostgreSQL TCP socket. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-6479",
+        "affected_version": "16",
+        "fixed_in": "16.14",
+        "component": "core server",
+        "cvss_score": "7.5",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "description": "Uncontrolled recursion in PostgreSQL SSL and GSS negotiation allows an attacker able to connect to a PostgreSQL AF_UNIX socket to achieve sustained denial of service. If SSL and GSS are both disabled, an attacker can do the same via access to a PostgreSQL TCP socket. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-6479",
+        "affected_version": "15",
+        "fixed_in": "15.18",
+        "component": "core server",
+        "cvss_score": "7.5",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "description": "Uncontrolled recursion in PostgreSQL SSL and GSS negotiation allows an attacker able to connect to a PostgreSQL AF_UNIX socket to achieve sustained denial of service. If SSL and GSS are both disabled, an attacker can do the same via access to a PostgreSQL TCP socket. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-6479",
+        "affected_version": "14",
+        "fixed_in": "14.23",
+        "component": "core server",
+        "cvss_score": "7.5",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "description": "Uncontrolled recursion in PostgreSQL SSL and GSS negotiation allows an attacker able to connect to a PostgreSQL AF_UNIX socket to achieve sustained denial of service. If SSL and GSS are both disabled, an attacker can do the same via access to a PostgreSQL TCP socket. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."
+      }
+    ],
+    "product_page_url": "https://www.postgresql.org/support/security/CVE-2026-6479/",
+    "input": { "url": "https://www.postgresql.org/support/security/" }
+  },
+  {
+    "security_advisories": [
+      {
+        "cve_id": "CVE-2026-14671",
+        "affected_version": "18",
+        "fixed_in": "18.5",
+        "component": "contrib module",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "description": "Type confusion in PostgreSQL module \"refint\" allows an object creator to execute arbitrary code as the operating system user running the database. The fix for this emerged as a non-security bug report, and the fix appear in the git repository with subject \"refint: Remove plan cache.\", without a CVE number. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-14671",
+        "affected_version": "17",
+        "fixed_in": "17.11",
+        "component": "contrib module",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "description": "Type confusion in PostgreSQL module \"refint\" allows an object creator to execute arbitrary code as the operating system user running the database. The fix for this emerged as a non-security bug report, and the fix appear in the git repository with subject \"refint: Remove plan cache.\", without a CVE number. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-14671",
+        "affected_version": "16",
+        "fixed_in": "16.15",
+        "component": "contrib module",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "description": "Type confusion in PostgreSQL module \"refint\" allows an object creator to execute arbitrary code as the operating system user running the database. The fix for this emerged as a non-security bug report, and the fix appear in the git repository with subject \"refint: Remove plan cache.\", without a CVE number. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-14671",
+        "affected_version": "15",
+        "fixed_in": "15.19",
+        "component": "contrib module",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "description": "Type confusion in PostgreSQL module \"refint\" allows an object creator to execute arbitrary code as the operating system user running the database. The fix for this emerged as a non-security bug report, and the fix appear in the git repository with subject \"refint: Remove plan cache.\", without a CVE number. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-14671",
+        "affected_version": "14",
+        "fixed_in": "14.24",
+        "component": "contrib module",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "description": "Type confusion in PostgreSQL module \"refint\" allows an object creator to execute arbitrary code as the operating system user running the database. The fix for this emerged as a non-security bug report, and the fix appear in the git repository with subject \"refint: Remove plan cache.\", without a CVE number. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      }
+    ],
+    "product_page_url": "https://www.postgresql.org/support/security/CVE-2026-14671/",
+    "input": { "url": "https://www.postgresql.org/support/security/" }
+  },
+  {
+    "security_advisories": [
+      {
+        "cve_id": "CVE-2026-15741",
+        "affected_version": "18",
+        "fixed_in": "18.5",
+        "component": "core server",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "description": "SQL injection in PostgreSQL EXTRACT() deparse allows an object owner to execute arbitrary SQL as a superuser via a hostile object definition. Attacks affect expression deparse consumers broadly, including pg_dump, psql commands like \\sf, and any similar usage in non-core tools. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-15741",
+        "affected_version": "17",
+        "fixed_in": "17.11",
+        "component": "core server",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "description": "SQL injection in PostgreSQL EXTRACT() deparse allows an object owner to execute arbitrary SQL as a superuser via a hostile object definition. Attacks affect expression deparse consumers broadly, including pg_dump, psql commands like \\sf, and any similar usage in non-core tools. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-15741",
+        "affected_version": "16",
+        "fixed_in": "16.15",
+        "component": "core server",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "description": "SQL injection in PostgreSQL EXTRACT() deparse allows an object owner to execute arbitrary SQL as a superuser via a hostile object definition. Attacks affect expression deparse consumers broadly, including pg_dump, psql commands like \\sf, and any similar usage in non-core tools. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-15741",
+        "affected_version": "15",
+        "fixed_in": "15.19",
+        "component": "core server",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "description": "SQL injection in PostgreSQL EXTRACT() deparse allows an object owner to execute arbitrary SQL as a superuser via a hostile object definition. Attacks affect expression deparse consumers broadly, including pg_dump, psql commands like \\sf, and any similar usage in non-core tools. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-15741",
+        "affected_version": "14",
+        "fixed_in": "14.24",
+        "component": "core server",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "description": "SQL injection in PostgreSQL EXTRACT() deparse allows an object owner to execute arbitrary SQL as a superuser via a hostile object definition. Attacks affect expression deparse consumers broadly, including pg_dump, psql commands like \\sf, and any similar usage in non-core tools. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      }
+    ],
+    "product_page_url": "https://www.postgresql.org/support/security/CVE-2026-15741/",
+    "input": { "url": "https://www.postgresql.org/support/security/" }
+  },
+  {
+    "security_advisories": [
+      {
+        "cve_id": "CVE-2026-6478",
+        "affected_version": "18",
+        "fixed_in": "18.4",
+        "component": "core server",
+        "cvss_score": "6.5",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+        "description": "Covert timing channel in comparison of MD5-hashed password in PostgreSQL authentication allows an attacker to recover user credentials sufficient to authenticate. This does not affect scram-sha-256 passwords, the default in all supported releases. However, current databases may have MD5-hashed passwords originating in upgrades from PostgreSQL 13 or earlier. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-6478",
+        "affected_version": "17",
+        "fixed_in": "17.10",
+        "component": "core server",
+        "cvss_score": "6.5",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+        "description": "Covert timing channel in comparison of MD5-hashed password in PostgreSQL authentication allows an attacker to recover user credentials sufficient to authenticate. This does not affect scram-sha-256 passwords, the default in all supported releases. However, current databases may have MD5-hashed passwords originating in upgrades from PostgreSQL 13 or earlier. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-6478",
+        "affected_version": "16",
+        "fixed_in": "16.14",
+        "component": "core server",
+        "cvss_score": "6.5",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+        "description": "Covert timing channel in comparison of MD5-hashed password in PostgreSQL authentication allows an attacker to recover user credentials sufficient to authenticate. This does not affect scram-sha-256 passwords, the default in all supported releases. However, current databases may have MD5-hashed passwords originating in upgrades from PostgreSQL 13 or earlier. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-6478",
+        "affected_version": "15",
+        "fixed_in": "15.18",
+        "component": "core server",
+        "cvss_score": "6.5",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+        "description": "Covert timing channel in comparison of MD5-hashed password in PostgreSQL authentication allows an attacker to recover user credentials sufficient to authenticate. This does not affect scram-sha-256 passwords, the default in all supported releases. However, current databases may have MD5-hashed passwords originating in upgrades from PostgreSQL 13 or earlier. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-6478",
+        "affected_version": "14",
+        "fixed_in": "14.23",
+        "component": "core server",
+        "cvss_score": "6.5",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+        "description": "Covert timing channel in comparison of MD5-hashed password in PostgreSQL authentication allows an attacker to recover user credentials sufficient to authenticate. This does not affect scram-sha-256 passwords, the default in all supported releases. However, current databases may have MD5-hashed passwords originating in upgrades from PostgreSQL 13 or earlier. Versions before PostgreSQL 18.4, 17.10, 16.14, 15.18, and 14.23 are affected."
+      }
+    ],
+    "product_page_url": "https://www.postgresql.org/support/security/CVE-2026-6478/",
+    "input": { "url": "https://www.postgresql.org/support/security/" }
+  },
+  {
+    "security_advisories": [
+      {
+        "cve_id": "CVE-2025-8715",
+        "affected_version": "17",
+        "fixed_in": "17.6",
+        "component": "core server",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "description": "Improper neutralization of newlines in pg_dump in PostgreSQL allows a user of the origin server to inject arbitrary code for restore-time execution as the client operating system account running psql to restore the dump, via psql meta-commands inside a purpose-crafted object name. The same attacks can achieve SQL injection as a superuser of the restore target server. pg_dumpall, pg_restore, and pg_upgrade are also affected. Versions before PostgreSQL 17.6, 16.10, 15.14, 14.19, and 13.22 are affected. Versions before 11.20 are unaffected. CVE-2012-0868 had fixed this class of problem, but version 11.20 reintroduced it."
+      },
+      {
+        "cve_id": "CVE-2025-8715",
+        "affected_version": "16",
+        "fixed_in": "16.10",
+        "component": "core server",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "description": "Improper neutralization of newlines in pg_dump in PostgreSQL allows a user of the origin server to inject arbitrary code for restore-time execution as the client operating system account running psql to restore the dump, via psql meta-commands inside a purpose-crafted object name. The same attacks can achieve SQL injection as a superuser of the restore target server. pg_dumpall, pg_restore, and pg_upgrade are also affected. Versions before PostgreSQL 17.6, 16.10, 15.14, 14.19, and 13.22 are affected. Versions before 11.20 are unaffected. CVE-2012-0868 had fixed this class of problem, but version 11.20 reintroduced it."
+      },
+      {
+        "cve_id": "CVE-2025-8715",
+        "affected_version": "15",
+        "fixed_in": "15.14",
+        "component": "core server",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "description": "Improper neutralization of newlines in pg_dump in PostgreSQL allows a user of the origin server to inject arbitrary code for restore-time execution as the client operating system account running psql to restore the dump, via psql meta-commands inside a purpose-crafted object name. The same attacks can achieve SQL injection as a superuser of the restore target server. pg_dumpall, pg_restore, and pg_upgrade are also affected. Versions before PostgreSQL 17.6, 16.10, 15.14, 14.19, and 13.22 are affected. Versions before 11.20 are unaffected. CVE-2012-0868 had fixed this class of problem, but version 11.20 reintroduced it."
+      },
+      {
+        "cve_id": "CVE-2025-8715",
+        "affected_version": "14",
+        "fixed_in": "14.19",
+        "component": "core server",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "description": "Improper neutralization of newlines in pg_dump in PostgreSQL allows a user of the origin server to inject arbitrary code for restore-time execution as the client operating system account running psql to restore the dump, via psql meta-commands inside a purpose-crafted object name. The same attacks can achieve SQL injection as a superuser of the restore target server. pg_dumpall, pg_restore, and pg_upgrade are also affected. Versions before PostgreSQL 17.6, 16.10, 15.14, 14.19, and 13.22 are affected. Versions before 11.20 are unaffected. CVE-2012-0868 had fixed this class of problem, but version 11.20 reintroduced it."
+      },
+      {
+        "cve_id": "CVE-2025-8715",
+        "affected_version": "13",
+        "fixed_in": "13.22",
+        "component": "core server",
+        "cvss_score": "8.8",
+        "vector_string": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "description": "Improper neutralization of newlines in pg_dump in PostgreSQL allows a user of the origin server to inject arbitrary code for restore-time execution as the client operating system account running psql to restore the dump, via psql meta-commands inside a purpose-crafted object name. The same attacks can achieve SQL injection as a superuser of the restore target server. pg_dumpall, pg_restore, and pg_upgrade are also affected. Versions before PostgreSQL 17.6, 16.10, 15.14, 14.19, and 13.22 are affected. Versions before 11.20 are unaffected. CVE-2012-0868 had fixed this class of problem, but version 11.20 reintroduced it."
+      }
+    ],
+    "product_page_url": "https://www.postgresql.org/support/security/CVE-2025-8715/",
+    "input": { "url": "https://www.postgresql.org/support/security/" }
+  },
+  {
+    "security_advisories": [
+      {
+        "cve_id": "CVE-2026-14679",
+        "affected_version": "18",
+        "fixed_in": "18.5",
+        "component": "core server",
+        "cvss_score": "8.2",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H",
+        "description": "Stack buffer overflow in PostgreSQL argument name matching allows an object creator to achieve unknown impacts via OUT parameter count. The attack can write only 0x0 and 0x1 bytes. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-14679",
+        "affected_version": "17",
+        "fixed_in": "17.11",
+        "component": "core server",
+        "cvss_score": "8.2",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H",
+        "description": "Stack buffer overflow in PostgreSQL argument name matching allows an object creator to achieve unknown impacts via OUT parameter count. The attack can write only 0x0 and 0x1 bytes. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-14679",
+        "affected_version": "16",
+        "fixed_in": "16.15",
+        "component": "core server",
+        "cvss_score": "8.2",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H",
+        "description": "Stack buffer overflow in PostgreSQL argument name matching allows an object creator to achieve unknown impacts via OUT parameter count. The attack can write only 0x0 and 0x1 bytes. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-14679",
+        "affected_version": "15",
+        "fixed_in": "15.19",
+        "component": "core server",
+        "cvss_score": "8.2",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H",
+        "description": "Stack buffer overflow in PostgreSQL argument name matching allows an object creator to achieve unknown impacts via OUT parameter count. The attack can write only 0x0 and 0x1 bytes. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      },
+      {
+        "cve_id": "CVE-2026-14679",
+        "affected_version": "14",
+        "fixed_in": "14.24",
+        "component": "core server",
+        "cvss_score": "8.2",
+        "vector_string": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H",
+        "description": "Stack buffer overflow in PostgreSQL argument name matching allows an object creator to achieve unknown impacts via OUT parameter count. The attack can write only 0x0 and 0x1 bytes. Versions before PostgreSQL 18.5, 17.11, 16.15, 15.19, and 14.24 are affected."
+      }
+    ],
+    "product_page_url": "https://www.postgresql.org/support/security/CVE-2026-14679/",
+    "input": { "url": "https://www.postgresql.org/support/security/" }
+  },
+  {
+    "security_advisories": [
+      {
+        "cve_id": "CVE-2022-41862",
+        "affected_version": "15",
+        "fixed_in": "15.2",
+        "component": "client",
+        "cvss_score": "3.7",
+        "vector_string": "AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+        "description": "A modified, unauthenticated server can send an unterminated string during the establishment of Kerberos transport encryption. When a libpq client application has a Kerberos credential cache and doesn't explicitly disable option gssencmode , a server can cause libpq to over-read and report an error message containing uninitialized bytes from and following its receive buffer. If libpq's caller somehow makes that message accessible to the attacker, this achieves a disclosure of the over-read bytes. We have not confirmed or ruled out viability of attacks that arrange for a crash or for presence of notable, confidential information in disclosed bytes."
+      },
+      {
+        "cve_id": "CVE-2022-41862",
+        "affected_version": "14",
+        "fixed_in": "14.7",
+        "component": "client",
+        "cvss_score": "3.7",
+        "vector_string": "AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+        "description": "A modified, unauthenticated server can send an unterminated string during the establishment of Kerberos transport encryption. When a libpq client application has a Kerberos credential cache and doesn't explicitly disable option gssencmode , a server can cause libpq to over-read and report an error message containing uninitialized bytes from and following its receive buffer. If libpq's caller somehow makes that message accessible to the attacker, this achieves a disclosure of the over-read bytes. We have not confirmed or ruled out viability of attacks that arrange for a crash or for presence of notable, confidential information in disclosed bytes."
+      },
+      {
+        "cve_id": "CVE-2022-41862",
+        "affected_version": "13",
+        "fixed_in": "13.10",
+        "component": "client",
+        "cvss_score": "3.7",
+        "vector_string": "AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+        "description": "A modified, unauthenticated server can send an unterminated string during the establishment of Kerberos transport encryption. When a libpq client application has a Kerberos credential cache and doesn't explicitly disable option gssencmode , a server can cause libpq to over-read and report an error message containing uninitialized bytes from and following its receive buffer. If libpq's caller somehow makes that message accessible to the attacker, this achieves a disclosure of the over-read bytes. We have not confirmed or ruled out viability of attacks that arrange for a crash or for presence of notable, confidential information in disclosed bytes."
+      },
+      {
+        "cve_id": "CVE-2022-41862",
+        "affected_version": "12",
+        "fixed_in": "12.14",
+        "component": "client",
+        "cvss_score": "3.7",
+        "vector_string": "AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+        "description": "A modified, unauthenticated server can send an unterminated string during the establishment of Kerberos transport encryption. When a libpq client application has a Kerberos credential cache and doesn't explicitly disable option gssencmode , a server can cause libpq to over-read and report an error message containing uninitialized bytes from and following its receive buffer. If libpq's caller somehow makes that message accessible to the attacker, this achieves a disclosure of the over-read bytes. We have not confirmed or ruled out viability of attacks that arrange for a crash or for presence of notable, confidential information in disclosed bytes."
+      }
+    ],
+    "product_page_url": "https://www.postgresql.org/support/security/CVE-2022-41862/",
+    "input": { "url": "https://www.postgresql.org/support/security/" }
+  }
+]

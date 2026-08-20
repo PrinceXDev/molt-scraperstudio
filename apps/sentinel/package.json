@@ -1,0 +1,23 @@
+{
+  "name": "@molt/sentinel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The molt CLI. The terminal is the primary interface.",
+  "bin": {
+    "molt": "./src/main.ts"
+  },
+  "scripts": {
+    "molt": "tsx src/main.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@molt/brightdata": "workspace:*",
+    "@molt/core": "workspace:*",
+    "@molt/health": "workspace:*",
+    "@molt/store": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}

@@ -78,29 +78,33 @@ describe('layout v1 — the baseline', () => {
   });
 });
 
-describe('layout v2 — the class rename', () => {
-  it('removes the selectors the scraper depends on', () => {
-    expect(v2).not.toContain('class="entry-title"');
+describe('layout v2 — the silent failure', () => {
+  it('relocates the two metrics out of their named elements', () => {
     expect(v2).not.toContain('class="entry-downloads"');
     expect(v2).not.toContain('class="entry-comments"');
-  });
-
-  it('relocates the fields behind new hooks', () => {
-    expect(v2).toContain('data-test="title"');
     expect(v2).toContain('class="metric" data-kind="downloads"');
     expect(v2).toContain('class="metric" data-kind="comments"');
   });
 
-  it('keeps the values in the DOM, so the break is genuinely healable', () => {
-    // This is the whole point. If v2 deleted the data, no amount of healing
-    // could recover it and the demo would be dishonest.
-    expect(v2).toContain('1,200');
-    expect(v2).toContain(ENTRIES[0]?.title ?? '');
+  it('leaves the entry container and the title untouched', () => {
+    // Load-bearing. If v2 also renamed these, the scraper would find no entries
+    // at all and the result would be an empty harvest — a real failure, but the
+    // easy one. Zero rows is obvious to any monitor. The failure worth
+    // demonstrating is the one where everything looks fine.
+    expect(v2).toContain('class="entry"');
+    expect(v2).toContain('class="entry-title"');
   });
 
   it('still renders every entry, so row count alone cannot detect the break', () => {
-    const count = (v2.match(/class="release-item"/g) ?? []).length;
-    expect(count).toBe(60);
+    expect((v2.match(/class="entry"/g) ?? []).length).toBe(60);
+    expect((v1.match(/class="entry"/g) ?? []).length).toBe(60);
+  });
+
+  it('keeps the values in the DOM, so the break is genuinely healable', () => {
+    // If v2 deleted the data, no amount of healing could recover it and the
+    // demonstration would be dishonest.
+    expect(v2).toContain('1,200');
+    expect(v2).toContain(ENTRIES[0]?.title ?? '');
   });
 });
 
@@ -124,11 +128,39 @@ describe('layout v3 — the distortion', () => {
 });
 
 describe('version switcher', () => {
-  it('links to sibling files in a static build', () => {
-    expect(renderPage(1, { mode: 'static' })).toContain('href="v2.html"');
+  it('is offered on the dev server, for local comparison', () => {
+    expect(renderPage(1, { mode: 'server' })).toContain('href="?v=2"');
   });
 
-  it('links by query string on the dev server', () => {
-    expect(renderPage(1, { mode: 'server' })).toContain('href="?v=2"');
+  it('is absent from a static build', () => {
+    // Load-bearing. The first deployed build linked to v1/v2/v3.html so a human
+    // could compare them, and Scraper Studio's AI generated a crawler that
+    // followed those links and scraped v3.html — the distorted layout — instead
+    // of the index. The baseline was of the wrong page, and a layout flip would
+    // never have been detected.
+    const html = renderPage(1, { mode: 'static' });
+
+    expect(html).not.toContain('<nav>');
+    expect(html).not.toContain('v2.html');
+    expect(html).not.toContain('href="?v=');
+  });
+
+  it('puts no id anchors on entries', () => {
+    // Anchors are a discovery surface to the generator even though nothing links
+    // to them: it built one "page" per `#fragment` and re-scraped the whole
+    // document for each, turning 60 records into 3,600 across 60 page loads.
+    const html = renderPage(1, { mode: 'static' });
+
+    expect(html).not.toMatch(/<article[^>]*\sid=/);
+  });
+
+  it('leaves a static build with no outbound navigation at all', () => {
+    // A chaos target must be exactly one URL. The only links permitted are the
+    // per-entry related links, which point off-site and are never followed back
+    // into another layout.
+    const html = renderPage(1, { mode: 'static' });
+    const internalLinks = [...html.matchAll(/href="(?!https?:)([^"]*)"/g)];
+
+    expect(internalLinks).toEqual([]);
   });
 });

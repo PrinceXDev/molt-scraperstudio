@@ -108,7 +108,8 @@ function lossWeight(finding: FaultFinding): number {
     case 'vanished':
       return 1;
     case 'distorted':
-      return 0.5;
+      // A field zeroed out is entirely lost, whatever a null check thinks.
+      return isZeroed(finding) ? 1 : 0.5;
     case 'degraded':
       return Math.min(1, finding.drop);
   }
@@ -130,11 +131,19 @@ function describe(
     return `All ${fieldCount} fields extracting normally`;
   }
 
-  const broken = faults.filter((f) => f.kind === 'collapsed' || f.kind === 'vanished');
+  const emptied = faults.filter((f) => f.kind === 'collapsed' || f.kind === 'vanished');
 
-  if (broken.length > 0) {
-    const names = broken.map((f) => f.field).join(', ');
-    return `${broken.length} of ${fieldCount} fields stopped extracting: ${names}`;
+  if (emptied.length > 0) {
+    const names = emptied.map((f) => f.field).join(', ');
+    return `${emptied.length} of ${fieldCount} fields stopped extracting: ${names}`;
+  }
+
+  // Reported separately from "stopped extracting", because the distinction is
+  // the point: these fields still return a value, and the value is a lie.
+  const zeroed = faults.filter(isZeroed);
+  if (zeroed.length > 0) {
+    const names = zeroed.map((f) => f.field).join(', ');
+    return `${zeroed.length} of ${fieldCount} fields returned only zeros: ${names}`;
   }
 
   const names = faults.map((f) => f.field).join(', ');
@@ -217,10 +226,28 @@ export function compareSnapshots(
   };
 }
 
+/**
+ * A field whose values have all become zero, from a meaningfully non-zero
+ * baseline.
+ *
+ * This is a hard failure dressed as a soft one, and it is the most dangerous
+ * shape a breakage can take. When a relocated field yields `0` rather than
+ * `null`, every null check passes and the value looks entirely legitimate —
+ * `download_count: 0` is a plausible number. Observed for real: a median of
+ * 20,251 went to 0 across all 60 rows while the row count never moved.
+ */
+function isZeroed(fault: FaultFinding): boolean {
+  return (
+    fault.kind === 'distorted' && fault.currentMagnitude === 0 && fault.baselineMagnitude !== 0
+  );
+}
+
 function resolveStatus(faults: readonly FaultFinding[], emptyHarvest: boolean): HealthStatus {
   if (emptyHarvest) return 'broken';
 
-  const hasHardFailure = faults.some((f) => f.kind === 'collapsed' || f.kind === 'vanished');
+  const hasHardFailure = faults.some(
+    (f) => f.kind === 'collapsed' || f.kind === 'vanished' || isZeroed(f),
+  );
   if (hasHardFailure) return 'broken';
 
   return faults.length > 0 ? 'degraded' : 'healthy';

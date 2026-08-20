@@ -1,0 +1,44 @@
+{
+  "collector_id": "c_mt101cvbc0o34ghzh",
+  "status": "awaiting_approval",
+  "completed_steps": [
+    "planner",
+    "control_preview_runner",
+    "code_fixer",
+    "step_preview_runner",
+    "request_fulfillment_validator",
+    "step_advance"
+  ],
+  "prompt": "The scraper returns 0 rows; it previously returned 60 changelog entries. The page markup changed: each entry is an article element with class 'entry' and these no longer carry an id attribute, so any logic that discovered entries via #fragment anchors now finds nothing. Locate the entries directly as the article.entry elements on this single page, and re-capture date, version, category, title, summary, tags, download_count and comment_count from each. Do not follow links or construct per-entry URLs.",
+  "view_url": "https://brightdata.com/cp/scrapers/c_mt101cvbc0o34ghzh",
+  "next_step": "bdata scraper approve c_mt101cvbc0o34ghzh --url https://molt-chaos.vercel.app",
+  "preview_result": [
+    {
+      "changelog_entries": [
+        {
+          "date": "2026-08-19",
+          "version": "v1.100.0",
+          "category": "service",
+          "title": "Faster cold starts for edge workers",
+          "summary": "Cold start times drop by roughly half on the smal...ance sizes. No configuration change is required.",
+          "tags": ["performance"],
+          "download_count": 1200,
+          "comment_count": 3
+        },
+        {
+          "date": "2026-08-17",
+          "version": "v1.100.1",
+          "category": "client",
+          "title": "Rewrote the connection pool for lower tail latency",
+          "summary": "The pool now grows lazily and shrinks under susta...g-standing latency spike at the 99th percentile.",
+          "tags": ["reliability", "breaking"],
+          "download_count": 2177,
+          "comment_count": 34
+        },
+        "58 more items"
+      ],
+      "product_page_url": "https://molt-chaos.vercel.app/"
+    }
+  ],
+  "diff_summary": "proposed template has 1 step(s) — review at view_url"
+}

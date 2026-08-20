@@ -18,6 +18,7 @@ export {
   isAwaitingApproval,
   isCollectorId,
   isFailureStatus,
+  isHealBlocked,
   isSuccessStatus,
   type ApproveEnvelope,
   type CollectorId,

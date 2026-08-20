@@ -1,0 +1,21 @@
+{
+  "name": "@molt/store",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Persistence. libSQL over a local file, explicit SQL, no migration tooling.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.4",
+    "@molt/health": "workspace:*"
+  }
+}

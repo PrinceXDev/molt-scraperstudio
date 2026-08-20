@@ -11,10 +11,10 @@ why things are the way they are.
 **Do not create new collectors.** Generation takes 5–25 minutes, is subject to a concurrent-job cap,
 and a failed attempt leaves an orphan that cannot be deleted programmatically. Use these.
 
-| Role | Collector ID | Target |
-|------|--------------|--------|
+| Role    | Collector ID           | Target                                         |
+| ------- | ---------------------- | ---------------------------------------------- |
 | Primary | `c_mt0z2fn11aj6lk4bdz` | `https://www.postgresql.org/support/security/` |
-| Chaos | _pending deploy_ | `apps/chaos` static build, public URL |
+| Chaos   | _pending deploy_       | `apps/chaos` static build, public URL          |
 
 Orphaned half-built collectors awaiting manual deletion in the dashboard:
 `c_mt0yykpt1qye2ry05d`, `c_mt0z0aeu8heabltr2`.

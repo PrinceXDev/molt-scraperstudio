@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildSnapshot, computeFieldStats, isPresent, median, observedFields } from '../src/index.js';
+import {
+  buildSnapshot,
+  computeFieldStats,
+  isPresent,
+  median,
+  observedFields,
+} from '../src/index.js';
 import type { Row } from '../src/index.js';
 
 describe('isPresent', () => {

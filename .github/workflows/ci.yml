@@ -1,0 +1,54 @@
+name: ci
+
+# Runs entirely offline against committed fixtures of real Bright Data output.
+# No secrets, no network, no credits — so the green checks mean the logic is
+# sound, not that the weather was good.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format
+        run: pnpm format:check
+
+      - name: Test
+        run: pnpm test
+
+      - name: Assert the suite needs no credentials
+        # The claim is that a judge can clone this and verify the detection logic
+        # in thirty seconds with no Bright Data account. This proves it, by
+        # blanking every credential and running again.
+        env:
+          BRIGHTDATA_API_KEY: ''
+          ANTHROPIC_API_KEY: ''
+          MOLT_DATABASE_URL: ':memory:'
+        run: pnpm test

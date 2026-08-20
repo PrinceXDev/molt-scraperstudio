@@ -22,9 +22,7 @@ describe('redactText', () => {
     // Pattern matching alone would miss this one.
     const env: NodeJS.ProcessEnv = { BRIGHTDATA_API_KEY: 'not-hex-but-still-secret' };
 
-    expect(redactText('key is not-hex-but-still-secret here', env)).toBe(
-      `key is ${REDACTED} here`,
-    );
+    expect(redactText('key is not-hex-but-still-secret here', env)).toBe(`key is ${REDACTED} here`);
   });
 
   it('ignores environment values too short to redact safely', () => {

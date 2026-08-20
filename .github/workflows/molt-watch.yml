@@ -1,0 +1,174 @@
+name: molt-watch
+
+# A scraper that fixes itself while you sleep.
+#
+# Runs the real collector on a schedule, and when the data drifts it composes a
+# heal prompt from the evidence, calls `bdata scraper heal`, and stops at the
+# approval gate — opening an issue with the before/after so a human can decide.
+#
+# The gate is not routed around. `MOLT_AUTO_APPROVE` exists for the unattended
+# case, and it is off by default, because approving a fix nobody has looked at is
+# how you replace a visibly broken scraper with an invisibly broken one.
+
+on:
+  schedule:
+    # Every six hours. Frequent enough to catch a redesign the same day, rare
+    # enough that a stable collector costs four page loads a day.
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      collector:
+        description: Which collector to check
+        type: choice
+        options: [primary, chaos]
+        default: primary
+
+concurrency:
+  # Never two heals at once: Scraper Studio allows one refactor job per collector
+  # and rejects the second with a 409.
+  group: molt-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      BRIGHTDATA_API_KEY: ${{ secrets.BRIGHTDATA_API_KEY }}
+      MOLT_COLLECTOR_PRIMARY: ${{ vars.MOLT_COLLECTOR_PRIMARY }}
+      MOLT_COLLECTOR_CHAOS: ${{ vars.MOLT_COLLECTOR_CHAOS }}
+      MOLT_DATABASE_URL: file:./data/molt.db
+      COLLECTOR: ${{ inputs.collector || 'primary' }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Restore Molt state
+        # The baseline is the whole point of a scheduled check, so it has to
+        # survive between runs. A cold start simply re-baselines and reports
+        # nothing, which is correct but useless.
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: molt-state-${{ env.COLLECTOR }}-${{ github.run_id }}
+          restore-keys: |
+            molt-state-${{ env.COLLECTOR }}-
+
+      - run: pnpm molt init
+
+      - name: Check the collector
+        id: check
+        # Exit 2 means broken, which is information rather than a build failure.
+        run: |
+          set +e
+          pnpm molt check "$COLLECTOR" | tee check.txt
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Diagnose and heal
+        if: steps.check.outputs.status == '2'
+        id: heal
+        run: |
+          set +e
+          pnpm molt watch | tee watch.txt
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Render the review
+        if: steps.heal.outputs.status == '3'
+        env:
+          NO_COLOR: '1'
+        run: pnpm molt review | tee review.txt
+
+      - name: Open an issue for the pending fix
+        if: steps.heal.outputs.status == '3'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const review = fs.readFileSync('review.txt', 'utf8');
+
+            const body = [
+              '`molt watch` detected drift on the scheduled check, composed a heal prompt from',
+              'the evidence, and ran `bdata scraper heal`. The fix is **awaiting approval** —',
+              'the Collector ID is unchanged and nothing downstream has been touched.',
+              '',
+              '```',
+              review.trim(),
+              '```',
+              '',
+              '### To decide',
+              '',
+              '```bash',
+              'pnpm molt review    # inspect the before/after',
+              'pnpm molt approve   # commit it, then verify the data actually recovered',
+              'pnpm molt reject    # decline, and try a sharper prompt',
+              '```',
+              '',
+              `<sub>[run ${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})</sub>`,
+            ].join('\n');
+
+            const title = `Scraper drift on ${process.env.COLLECTOR}: a fix is awaiting approval`;
+
+            // Update the open issue rather than filing a new one every six hours.
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'molt:awaiting-approval',
+            });
+
+            const match = existing.data.find((issue) => issue.title === title);
+
+            if (match) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['molt:awaiting-approval'],
+              });
+            }
+
+      - name: Approve unattended
+        # Off unless explicitly enabled. See the note at the top of this file.
+        if: steps.heal.outputs.status == '3' && vars.MOLT_AUTO_APPROVE == 'true'
+        run: pnpm molt approve
+
+      - name: Save Molt state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: molt-state-${{ env.COLLECTOR }}-${{ github.run_id }}
+
+      - name: Upload the transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: molt-${{ env.COLLECTOR }}-${{ github.run_id }}
+          path: |
+            check.txt
+            watch.txt
+            review.txt
+          if-no-files-found: ignore
+          retention-days: 14
