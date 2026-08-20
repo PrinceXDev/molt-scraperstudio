@@ -19,6 +19,7 @@ const SEVERITY: Record<FaultFinding['kind'], number> = {
   collapsed: 4,
   vanished: 3,
   distorted: 2,
+  flatlined: 2,
   degraded: 1,
 };
 
@@ -91,6 +92,28 @@ export function classifyField(
     }
   }
 
+  // Still filling at a plausible magnitude — but has the variety gone? A field
+  // that carried many distinct values and now repeats a single one on every
+  // row has flatlined. Checked after distortion so a zeroed field (which also
+  // has one distinct value) keeps its more specific verdict. `distinct` is
+  // absent on snapshots persisted before it existed; absence means "unknown",
+  // and an unknown baseline is never grounds for a fault.
+  if (
+    typeof baseline.distinct === 'number' &&
+    typeof current.distinct === 'number' &&
+    baseline.distinct >= thresholds.flatlineMinDistinct &&
+    current.present >= thresholds.flatlineMinDistinct &&
+    current.distinct === 1
+  ) {
+    return {
+      kind: 'flatlined',
+      field,
+      rate: current.rate,
+      baselineDistinct: baseline.distinct,
+      currentDistinct: current.distinct,
+    };
+  }
+
   return { kind: 'healthy', field, rate: current.rate };
 }
 
@@ -110,6 +133,10 @@ function lossWeight(finding: FaultFinding): number {
     case 'distorted':
       // A field zeroed out is entirely lost, whatever a null check thinks.
       return isZeroed(finding) ? 1 : 0.5;
+    case 'flatlined':
+      // The values are still values, but the information has gone: one
+      // category where there were many. Weighted like a distortion.
+      return 0.5;
     case 'degraded':
       return Math.min(1, finding.drop);
   }
@@ -144,6 +171,14 @@ function describe(
   if (zeroed.length > 0) {
     const names = zeroed.map((f) => f.field).join(', ');
     return `${zeroed.length} of ${fieldCount} fields returned only zeros: ${names}`;
+  }
+
+  // Same family of lie: every row fills, every value is plausible, and they
+  // are all the same value where the baseline had variety.
+  const flat = faults.filter((f) => f.kind === 'flatlined');
+  if (flat.length > 0) {
+    const names = flat.map((f) => f.field).join(', ');
+    return `${flat.length} of ${fieldCount} fields collapsed to a single repeated value: ${names}`;
   }
 
   const names = faults.map((f) => f.field).join(', ');

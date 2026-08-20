@@ -50,6 +50,7 @@ function toCollector(row: LibsqlRow): CollectorRecord {
     kind: str(row['kind']) as CollectorKind,
     recordPath: strOrNull(row['record_path']),
     inherit: fromJson<string[]>(strOrNull(row['inherit_json']), []),
+    canaryUrl: strOrNull(row['canary_url']),
     createdAt: str(row['created_at']),
   };
 }
@@ -126,6 +127,8 @@ export interface SaveCollectorInput {
   readonly kind: CollectorKind;
   readonly recordPath?: string | null;
   readonly inherit?: readonly string[];
+  /** Held-out URL for canary verification. See {@link CollectorRecord}. */
+  readonly canaryUrl?: string | null;
   readonly createdAt: string;
 }
 
@@ -203,14 +206,15 @@ export class Repository {
 
   async saveCollector(input: SaveCollectorInput): Promise<CollectorRecord> {
     await this.db.client.execute({
-      sql: `INSERT INTO collectors (id, name, target_url, kind, record_path, inherit_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+      sql: `INSERT INTO collectors (id, name, target_url, kind, record_path, inherit_json, canary_url, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
               name = excluded.name,
               target_url = excluded.target_url,
               kind = excluded.kind,
               record_path = excluded.record_path,
-              inherit_json = excluded.inherit_json`,
+              inherit_json = excluded.inherit_json,
+              canary_url = excluded.canary_url`,
       args: [
         input.id,
         input.name,
@@ -218,6 +222,7 @@ export class Repository {
         input.kind,
         input.recordPath ?? null,
         toJson(input.inherit ?? []),
+        input.canaryUrl ?? null,
         input.createdAt,
       ],
     });
@@ -284,6 +289,17 @@ export class Repository {
     const result = await this.db.client.execute({
       sql: `SELECT * FROM commands WHERE incident_id = ? ORDER BY id`,
       args: [incidentId],
+    });
+    return result.rows.map(toCommand);
+  }
+
+  /** Every command run against one collector, oldest first — the credits ledger. */
+  async listCommandsForCollector(collectorId: string, limit = 500): Promise<CommandRow[]> {
+    const result = await this.db.client.execute({
+      sql: `SELECT * FROM (
+              SELECT * FROM commands WHERE collector_id = ? ORDER BY id DESC LIMIT ?
+            ) ORDER BY id ASC`,
+      args: [collectorId, limit],
     });
     return result.rows.map(toCommand);
   }
@@ -415,6 +431,30 @@ export class Repository {
       },
       { sql: `UPDATE snapshots SET is_baseline = 1 WHERE id = ?`, args: [snapshotId] },
     ]);
+  }
+
+  /**
+   * Un-pin whatever baseline a collector has explicitly set.
+   *
+   * `getBaseline` falls back to the earliest snapshot when none is pinned, so
+   * this is `molt baseline reset`'s entire implementation: clear the flag and
+   * the fallback takes over on the very next read. Nothing is deleted — the
+   * snapshot that was pinned is still there, just no longer marked.
+   */
+  async clearBaseline(collectorId: string): Promise<void> {
+    await this.db.client.execute({
+      sql: `UPDATE snapshots SET is_baseline = 0 WHERE collector_id = ?`,
+      args: [collectorId],
+    });
+  }
+
+  /** Whether a baseline was explicitly pinned, as opposed to the earliest-snapshot fallback. */
+  async hasPinnedBaseline(collectorId: string): Promise<boolean> {
+    const result = await this.db.client.execute({
+      sql: `SELECT 1 FROM snapshots WHERE collector_id = ? AND is_baseline = 1 LIMIT 1`,
+      args: [collectorId],
+    });
+    return result.rows.length > 0;
   }
 
   /** Oldest first, which is the order a field-by-run heatmap needs. */

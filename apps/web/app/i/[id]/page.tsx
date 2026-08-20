@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { summariseCredits } from '@molt/brightdata';
+import { costOfSilence, describeCostOfSilence } from '@molt/diagnose';
+
 import { Badge } from '@/components/Badge';
 import { ScoreBar } from '@/components/ScoreBar';
 import { getContext } from '@/lib/context';
@@ -37,6 +40,17 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
   const events = await repo.listEvents(id);
   const commands = await repo.listCommandsForIncident(id);
 
+  const badRuns = events.filter(
+    (e) => e.kind === 'detected' || e.kind === 'observed.still-broken',
+  ).length;
+  const cost = costOfSilence({
+    openedAt: incident.openedAt,
+    closedAt: incident.closedAt,
+    now: new Date().toISOString(),
+    badRuns,
+  });
+  const credits = summariseCredits(commands);
+
   return (
     <>
       <div className="crumb">
@@ -53,6 +67,17 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
           </p>
         </div>
         <Badge value={incident.state} />
+      </div>
+
+      <div className="faint mb-4 flex gap-4 text-xs">
+        <span className={cost.ongoing ? 'text-[var(--warn)]' : ''}>
+          {describeCostOfSilence(cost)}
+        </span>
+        {credits.commandCount > 0 && (
+          <span title="Estimated relative usage — Bright Data publishes no per-operation price list.">
+            ~{credits.total} credits ({credits.commandCount} commands)
+          </span>
+        )}
       </div>
 
       {incident.state === 'awaiting_approval' && (

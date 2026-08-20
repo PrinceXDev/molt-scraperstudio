@@ -14,7 +14,7 @@ import { openDatabase, Repository, type CollectorKind, type Database } from '@mo
  */
 
 export interface CollectorConfig {
-  readonly alias: 'primary' | 'chaos';
+  readonly alias: string;
   readonly id: string;
   readonly targetUrl: string;
   readonly name: string;
@@ -22,6 +22,8 @@ export interface CollectorConfig {
   /** Dot path to nested records in this collector's output. */
   readonly recordPath: string | null;
   readonly inherit: readonly string[];
+  /** Held-out URL for canary verification, when one is configured. */
+  readonly canaryUrl: string | null;
 }
 
 export interface Context {
@@ -89,6 +91,7 @@ function readCollectors(): CollectorConfig[] {
       kind: 'primary',
       recordPath: PROJECTIONS.primary.path,
       inherit: PROJECTIONS.primary.inherit,
+      canaryUrl: emptyToNull(process.env['MOLT_CANARY_PRIMARY']),
     });
   }
 
@@ -103,10 +106,15 @@ function readCollectors(): CollectorConfig[] {
       kind: 'chaos',
       recordPath: PROJECTIONS.chaos.path,
       inherit: PROJECTIONS.chaos.inherit,
+      canaryUrl: emptyToNull(process.env['MOLT_CANARY_CHAOS']),
     });
   }
 
   return configs;
+}
+
+function emptyToNull(value: string | undefined): string | null {
+  return value === undefined || value === '' ? null : value;
 }
 
 export interface OpenContextOptions {

@@ -25,11 +25,7 @@ const BEARER = /\b(bearer\s+)\S+/gi;
 const SECRET_FLAGS: ReadonlySet<string> = new Set(['-k', '--api-key', '--token', '--apikey']);
 
 /** Environment variables whose literal values must never be echoed. */
-const SECRET_ENV_KEYS: readonly string[] = [
-  'BRIGHTDATA_API_KEY',
-  'BRIGHT_DATA_API_TOKEN',
-  'ANTHROPIC_API_KEY',
-];
+const SECRET_ENV_KEYS: readonly string[] = ['BRIGHTDATA_API_KEY', 'BRIGHT_DATA_API_TOKEN'];
 
 /**
  * Literal secret values drawn from the environment.

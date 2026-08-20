@@ -18,16 +18,26 @@ import { createClient, type Client, type InValue } from '@libsql/client';
  * schema on them would be actively wrong.
  */
 
-export const SCHEMA = `
+/**
+ * The collectors table's DDL, extracted so the migration below can rebuild an
+ * old table from the same definition the schema creates fresh. `kind` gained
+ * `'custom'` when `molt add` arrived, and `canary_url` when canary
+ * verification did.
+ */
+const COLLECTORS_DDL = `
 CREATE TABLE IF NOT EXISTS collectors (
   id            TEXT PRIMARY KEY,          -- Bright Data collector id, c_*
   name          TEXT NOT NULL,
   target_url    TEXT NOT NULL,
-  kind          TEXT NOT NULL CHECK (kind IN ('primary', 'chaos')),
+  kind          TEXT NOT NULL CHECK (kind IN ('primary', 'chaos', 'custom')),
   record_path   TEXT,                      -- dot path to nested records, if any
   inherit_json  TEXT NOT NULL DEFAULT '[]',-- wrapper fields merged into records
-  created_at    TEXT NOT NULL
-);
+  created_at    TEXT NOT NULL,
+  canary_url    TEXT                       -- held-out URL for canary verification
+);`;
+
+export const SCHEMA = `
+${COLLECTORS_DDL}
 
 CREATE TABLE IF NOT EXISTS runs (
   id            TEXT PRIMARY KEY,
@@ -140,12 +150,98 @@ export async function openDatabase(options: OpenOptions = {}): Promise<Database>
   // IF NOT EXISTS, so this is safe on every startup.
   await client.executeMultiple(SCHEMA);
 
+  await migrate(client);
+
   return {
     client,
     close: () => {
       client.close();
     },
   };
+}
+
+/**
+ * Bring an existing database file up to the current schema.
+ *
+ * `IF NOT EXISTS` only helps a fresh file — a table created by an older
+ * version keeps its old shape forever, and there is no migration tooling here
+ * on purpose. So the handful of changes the schema has actually been through
+ * are applied by hand, idempotently, on every open:
+ *
+ * 1. `collectors.canary_url` — added as a plain column. `ALTER TABLE ADD
+ *    COLUMN` fails if the column exists, which is the cheapest possible
+ *    "already applied" check.
+ * 2. `collectors.kind` gained `'custom'` — a CHECK constraint cannot be
+ *    altered, so an old table is rebuilt from the current DDL and its rows
+ *    copied across. Detected by inspecting the stored DDL in `sqlite_master`,
+ *    so a current table is never touched.
+ *
+ * The rebuild is wrapped in an explicit transaction and drops any leftover
+ * `collectors_migr` before starting. Without both of those, a rebuild that is
+ * interrupted midway — a crashed process, or two connections opening the same
+ * file at once — leaves `collectors_migr` sitting there already populated,
+ * and the next attempt's `INSERT … SELECT … FROM collectors` collides with
+ * its own previous copy on the primary key
+ * (`SQLITE_CONSTRAINT_PRIMARYKEY: … collectors_migr.id`). Dropping first
+ * makes every attempt start from a clean slate; the transaction means a
+ * crash between `DROP TABLE collectors` and the rename can never leave the
+ * database with no `collectors` table at all.
+ *
+ * Foreign keys are switched off for the duration. `runs`, `snapshots`,
+ * `incidents` and `commands` all `REFERENCES collectors(id)`, and on any
+ * database that has actually been used, `DROP TABLE collectors` fails with
+ * `SQLITE_CONSTRAINT_FOREIGNKEY` the moment those tables hold a single row —
+ * dropping the referenced table would leave them pointing at nothing, even
+ * though the very next statement recreates it under the same name. SQLite's
+ * own documentation prescribes exactly this pattern for schema changes to a
+ * referenced table, and `PRAGMA foreign_keys` can only be toggled *outside*
+ * a transaction, which is why it sits before `BEGIN` and after `COMMIT`
+ * rather than inside the migration script.
+ */
+async function migrate(client: Client): Promise<void> {
+  try {
+    await client.execute(`ALTER TABLE collectors ADD COLUMN canary_url TEXT`);
+  } catch {
+    // Column already present — the normal case.
+  }
+
+  const master = await client.execute(
+    `SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'collectors'`,
+  );
+  const ddl = master.rows[0]?.['sql'];
+
+  if (typeof ddl === 'string' && !ddl.includes(`'custom'`)) {
+    // Rebuild, without RENAME on the old table: a modern SQLite rewrites other
+    // tables' foreign-key clauses when the table they reference is renamed,
+    // which would leave runs/snapshots pointing at `collectors_old`. Creating
+    // the new table under a temporary name and renaming *it* into place keeps
+    // every existing reference intact.
+    await client.execute('PRAGMA foreign_keys = OFF');
+
+    try {
+      await client.executeMultiple(`
+        DROP TABLE IF EXISTS collectors_migr;
+        BEGIN;
+        ${COLLECTORS_DDL.replace('IF NOT EXISTS collectors', 'IF NOT EXISTS collectors_migr')}
+        INSERT INTO collectors_migr (id, name, target_url, kind, record_path, inherit_json, created_at, canary_url)
+          SELECT id, name, target_url, kind, record_path, inherit_json, created_at, canary_url FROM collectors;
+        DROP TABLE collectors;
+        ALTER TABLE collectors_migr RENAME TO collectors;
+        COMMIT;
+      `);
+    } catch (error) {
+      // Leave no half-open transaction behind for whatever runs next on this
+      // connection. Safe to call even if the failure happened before BEGIN.
+      try {
+        await client.execute('ROLLBACK');
+      } catch {
+        // Nothing was open — fine.
+      }
+      throw error;
+    } finally {
+      await client.execute('PRAGMA foreign_keys = ON');
+    }
+  }
 }
 
 /** JSON round-trip helpers, so callers never hand-roll stringify at call sites. */

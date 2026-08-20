@@ -1,10 +1,21 @@
-import { projectRows, type UnknownRecord } from '@molt/brightdata';
-import { needsHuman } from '@molt/core';
-import { buildReviewRows, isSampleTooSmallToCompare } from '@molt/diagnose';
+import {
+  preflightTarget,
+  projectRows,
+  resolveCliEntry,
+  summariseCredits,
+  type UnknownRecord,
+} from '@molt/brightdata';
+import { CREATE_DESCRIPTION_MAX_CHARS, needsHuman } from '@molt/core';
+import {
+  buildReviewRows,
+  costOfSilence,
+  describeCostOfSilence,
+  isSampleTooSmallToCompare,
+} from '@molt/diagnose';
 import { buildSnapshot, type Row } from '@molt/health';
 import type { IncidentRecord } from '@molt/store';
 
-import { resolveCollector, type Context } from './context.js';
+import { resolveCollector, type CollectorConfig, type Context } from './context.js';
 import {
   amber,
   bold,
@@ -44,13 +55,15 @@ export async function cmdInit(context: Context): Promise<number> {
       kind: config.kind,
       recordPath: config.recordPath,
       inherit: config.inherit,
+      canaryUrl: config.canaryUrl,
       createdAt: new Date().toISOString(),
     });
 
     write(
       `  ${green('✓')} ${bold(config.alias.padEnd(8))} ${brand(config.id)}\n` +
         `    ${dim(config.targetUrl)}\n` +
-        `    ${dim(`records at .${config.recordPath ?? '(flat)'}`)}`,
+        `    ${dim(`records at .${config.recordPath ?? '(flat)'}`)}` +
+        (config.canaryUrl === null ? '' : `\n    ${dim(`canary ${config.canaryUrl}`)}`),
     );
   }
 
@@ -66,7 +79,7 @@ export async function cmdInit(context: Context): Promise<number> {
  * close an incident accordingly.
  */
 export async function cmdCheck(context: Context, selector?: string): Promise<number> {
-  const config = resolveCollector(context, selector);
+  const config = await resolveTarget(context, selector);
   if (config === null) {
     writeError(red(`Unknown collector "${selector ?? ''}". Try: primary, chaos, or a c_* id.`));
     return 1;
@@ -168,6 +181,98 @@ export async function cmdStatus(context: Context): Promise<number> {
         ? `  ${green('no open incident')}`
         : `  ${stateBadge(open.state)}  ${open.id}  ${dim(open.report.summary ?? '')}`,
     );
+
+    if (open !== null) {
+      const events = await context.repo.listEvents(open.id);
+      const badRuns = events.filter(
+        (e) => e.kind === 'detected' || e.kind === 'observed.still-broken',
+      ).length;
+      const cost = costOfSilence({
+        openedAt: open.openedAt,
+        closedAt: open.closedAt,
+        now: new Date().toISOString(),
+        badRuns,
+      });
+      write(`  ${amber(describeCostOfSilence(cost))}`);
+    }
+
+    const commands = await context.repo.listCommandsForCollector(collector.id);
+    if (commands.length > 0) {
+      const credits = summariseCredits(commands);
+      write(
+        `  ${dim('credits')}  ~${credits.total} ${dim(`(estimate, ${credits.commandCount} commands)`)}`,
+      );
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * The credits ledger: how expensive each collector has been to keep healthy.
+ *
+ * Bright Data does not publish per-operation pricing, so every number here is
+ * explicitly labelled an estimate — see `@molt/brightdata/credits.ts` for the
+ * reasoning. The point is relative, not absolute: which collector burns the
+ * most AI-Flow jobs keeping itself alive.
+ */
+export async function cmdCredits(context: Context, selector?: string): Promise<number> {
+  if (selector === undefined || selector === '') {
+    const collectors = await context.repo.listCollectors();
+
+    if (collectors.length === 0) {
+      write(dim('No collectors registered yet. Run: molt init'));
+      return 0;
+    }
+
+    write(heading('Credits (estimated)'));
+    write(
+      dim(
+        '  Bright Data publishes no per-operation price list — see molt credits <collector>\n  for the breakdown, or @molt/brightdata/credits.ts for how the estimate is built.',
+      ),
+    );
+
+    let fleetTotal = 0;
+
+    for (const collector of collectors) {
+      const commands = await context.repo.listCommandsForCollector(collector.id);
+      const credits = summariseCredits(commands);
+      fleetTotal += credits.total;
+
+      write(
+        `\n  ${bold(collector.name)}  ${brand(collector.id)}  ` +
+          `${dim(`~${credits.total} credits, ${credits.commandCount} commands`)}`,
+      );
+    }
+
+    write(`\n  ${bold('Fleet total')}  ~${fleetTotal} credits`);
+    return 0;
+  }
+
+  const config = await resolveTarget(context, selector);
+  if (config === null) {
+    writeError(red(`Unknown collector "${selector}". Try: primary, chaos, or a c_* id.`));
+    return 1;
+  }
+
+  const commands = await context.repo.listCommandsForCollector(config.id);
+  const credits = summariseCredits(commands);
+
+  write(heading(`Credits for ${config.alias}`));
+  write(`  ${dim('collector')}  ${brand(config.id)}`);
+
+  if (commands.length === 0) {
+    write(`\n  ${dim('No commands recorded yet.')}`);
+    return 0;
+  }
+
+  write(
+    `\n  ${bold('Total')}  ~${credits.total} ${dim(`(estimate, ${credits.commandCount} commands)`)}`,
+  );
+  write('');
+  for (const kind of ['run', 'heal', 'create', 'approve', 'reject', 'unknown'] as const) {
+    if (credits.byKind[kind] === 0 && kind === 'unknown') continue;
+    write(`    ${kind.padEnd(10)} ${dim('~')}${credits.byKind[kind]}`);
   }
 
   return 0;
@@ -237,6 +342,18 @@ export async function cmdReview(context: Context, incidentId?: string): Promise<
   write(`  ${dim('attempts')}   ${incident.attempts}`);
   write(`  ${dim('opened')}     ${incident.openedAt}`);
 
+  const events = await context.repo.listEvents(incident.id);
+  const badRuns = events.filter(
+    (e) => e.kind === 'detected' || e.kind === 'observed.still-broken',
+  ).length;
+  const cost = costOfSilence({
+    openedAt: incident.openedAt,
+    closedAt: incident.closedAt,
+    now: new Date().toISOString(),
+    badRuns,
+  });
+  write(`  ${dim('cost')}       ${amber(describeCostOfSilence(cost))}`);
+
   write(`\n  ${bold('What broke')}`);
   write(`  ${incident.report.summary}`);
   if (incident.report.faults.length > 0) {
@@ -295,7 +412,6 @@ export async function cmdReview(context: Context, incidentId?: string): Promise<
     write(`\n  ${amber('The heal returned no preview rows to review.')}`);
   }
 
-  const events = await context.repo.listEvents(incident.id);
   if (events.length > 0) {
     write(`\n  ${bold('Timeline')}`);
     for (const event of events) {
@@ -306,7 +422,8 @@ export async function cmdReview(context: Context, incidentId?: string): Promise<
 
   const commands = await context.repo.listCommandsForIncident(incident.id);
   if (commands.length > 0) {
-    write(`\n  ${bold('Commands run')}`);
+    const credits = summariseCredits(commands);
+    write(`\n  ${bold('Commands run')} ${dim(`(~${credits.total} credits estimated)`)}`);
     for (const command of commands) {
       write(
         renderCommand(
@@ -377,7 +494,7 @@ export async function cmdDecide(
  * heal releases the lock.
  */
 export async function cmdUnblock(context: Context, selector?: string): Promise<number> {
-  const config = resolveCollector(context, selector);
+  const config = await resolveTarget(context, selector);
   if (config === null) {
     writeError(red(`Unknown collector "${selector ?? ''}". Try: primary, chaos, or a c_* id.`));
     return 1;
@@ -406,6 +523,254 @@ export async function cmdUnblock(context: Context, selector?: string): Promise<n
 
   write(`\n  ${green('Cleared.')} ${dim('A new heal can now start. Run: molt watch')}`);
   return 0;
+}
+
+/**
+ * Show, pin, or un-pin a collector's baseline.
+ *
+ * The engine already falls back to the earliest snapshot when nothing is
+ * explicitly pinned (`Repository.getBaseline`), which is enough for the
+ * common case — but a legitimate redesign of the target site needs a human
+ * to say "this is normal now, stop comparing against the old shape", and an
+ * accidental heal onto the wrong page needs the opposite: forget the pin and
+ * fall back to history. `set` and `reset` are exactly those two decisions,
+ * kept deliberately explicit rather than automatic — silently moving the
+ * baseline is the last thing a reliability tool should do without being
+ * asked.
+ */
+export async function cmdBaseline(context: Context, args: readonly string[]): Promise<number> {
+  const [action, selector, snapshotIdArg] = args;
+
+  if (action !== 'show' && action !== 'set' && action !== 'reset') {
+    writeError(`${red('Usage:')} molt baseline <show|set|reset> [collector] [snapshotId]`);
+    return 1;
+  }
+
+  const config = await resolveTarget(context, selector);
+  if (config === null) {
+    writeError(red(`Unknown collector "${selector ?? ''}". Try: primary, chaos, or a c_* id.`));
+    return 1;
+  }
+
+  write(heading(`Baseline ${action} — ${config.alias}`));
+  write(`  ${dim('collector')}  ${brand(config.id)}`);
+
+  if (action === 'show') {
+    const baseline = await context.repo.getBaseline(config.id);
+
+    if (baseline === null) {
+      write(`\n  ${dim(`No snapshots yet. Run: molt check ${config.alias}`)}`);
+      return 0;
+    }
+
+    const pinned = await context.repo.hasPinnedBaseline(config.id);
+
+    write(
+      `\n  ${dim('captured')}  ${baseline.capturedAt}\n` +
+        `  ${dim('rows')}      ${baseline.rowCount}\n` +
+        `  ${dim('fields')}    ${baseline.fields.length}\n` +
+        `  ${dim('source')}    ${
+          pinned ? cyan('explicitly pinned') : dim('earliest snapshot (fallback)')
+        }\n` +
+        `  ${dim('id')}        ${baseline.id}`,
+    );
+    return 0;
+  }
+
+  if (action === 'reset') {
+    await context.repo.clearBaseline(config.id);
+    const fallback = await context.repo.getBaseline(config.id);
+
+    write(
+      `\n  ${green('Cleared.')} ${
+        fallback === null
+          ? dim('No snapshots remain to fall back to.')
+          : dim(`The earliest snapshot (${fallback.capturedAt}) is the baseline again.`)
+      }`,
+    );
+    return 0;
+  }
+
+  // action === 'set'
+  let target = null;
+
+  if (snapshotIdArg !== undefined && snapshotIdArg !== '') {
+    target = await context.repo.getSnapshot(snapshotIdArg);
+    if (target === null || target.collectorId !== config.id) {
+      writeError(red(`Snapshot "${snapshotIdArg}" does not belong to ${config.alias}.`));
+      return 1;
+    }
+  } else {
+    const [latest] = await context.repo.listSnapshots(config.id, 1);
+    if (latest === undefined) {
+      writeError(red(`${config.alias} has no snapshots yet. Run: molt check ${config.alias}`));
+      return 1;
+    }
+    target = latest;
+  }
+
+  await context.repo.setBaseline(target.id);
+  write(
+    `\n  ${green('Pinned.')} ${dim(
+      `${target.capturedAt} (${target.rowCount} rows) is now the baseline.`,
+    )}`,
+  );
+  return 0;
+}
+
+/**
+ * Onboard a brand-new collector: preflight the target, generate, baseline.
+ *
+ * The preflight encodes every target-selection lesson this project paid for:
+ * the ~200 KB size ceiling the intent analyser enforces by dying, the robots
+ * check, and the link-graph warning (a page with internal navigation tends to
+ * become a crawler rather than a single-page extractor). A failed create
+ * leaves an orphan collector that cannot be deleted programmatically, so the
+ * blockers are hard stops unless `--force` says otherwise.
+ */
+export async function cmdAdd(context: Context, args: readonly string[]): Promise<number> {
+  const { url, description, name, canaryUrl, force } = parseAddArgs(args);
+
+  if (url === null || description === '') {
+    writeError(
+      `${red('Usage:')} molt add <url> <description…> [--name <name>] [--canary <url>] [--force]`,
+    );
+    return 1;
+  }
+
+  if (description.length > CREATE_DESCRIPTION_MAX_CHARS) {
+    writeError(
+      red(
+        `Description is ${description.length} chars; the CLI caps it at ${CREATE_DESCRIPTION_MAX_CHARS}.`,
+      ),
+    );
+    return 1;
+  }
+
+  write(heading('Preflighting target'));
+  write(`  ${dim('target')}  ${url}`);
+
+  const report = await preflightTarget(url);
+
+  write(
+    `  ${dim('size')}    ${Math.round(report.bytes / 1024)} KB ${
+      report.withinSizeLimit ? green('within the ~200 KB ceiling') : red('OVER the ~200 KB ceiling')
+    }`,
+  );
+  write(
+    `  ${dim('robots')}  ${
+      report.robotsFound
+        ? report.robotsAllowed
+          ? green('path permitted')
+          : red('path disallowed')
+        : dim('no robots.txt found')
+    }`,
+  );
+  write(
+    `  ${dim('links')}   ${report.links.internalLinks} internal, ${report.links.anchorIds} id anchors`,
+  );
+
+  for (const warning of report.warnings) {
+    write(`  ${amber('▲')} ${warning}`);
+  }
+
+  if (report.blockers.length > 0) {
+    write('');
+    for (const blocker of report.blockers) {
+      write(`  ${red('✗')} ${blocker}`);
+    }
+
+    if (!force) {
+      write(
+        `\n  ${red('Refusing to create.')} ${dim(
+          'A failed generation leaves an orphan collector that must be deleted by hand. Pass --force to proceed anyway.',
+        )}`,
+      );
+      return 1;
+    }
+
+    write(`\n  ${amber('Proceeding despite blockers (--force).')}`);
+  }
+
+  write(heading('Generating collector'));
+  write(
+    dim('  this is an AI-Flow job — expect 5–25 minutes, serialised behind any other heal/create…'),
+  );
+
+  const result = await context.engine.createCollector({
+    url,
+    description,
+    ...(name === null ? {} : { name }),
+    canaryUrl,
+  });
+
+  write('');
+  write(renderCommand(result.command.display, `${result.command.durationMs} ms`));
+
+  if (result.collector === null) {
+    write(
+      `\n  ${red('Generation failed.')} ${dim(result.envelope.error ?? result.envelope.status)}`,
+    );
+    write(
+      dim(
+        `  Orphaned template ${result.envelope.collector_id} may need manual deletion in the dashboard.`,
+      ),
+    );
+    return 1;
+  }
+
+  write(`\n  ${green('✓')} ${bold(result.collector.name)}  ${brand(result.collector.id)}`);
+  if (result.collector.canaryUrl !== null) {
+    write(`    ${dim(`canary ${result.collector.canaryUrl}`)}`);
+  }
+
+  write(heading('Establishing baseline'));
+  const check = await context.engine.check(result.collector.id);
+  write(`  ${dim('rows')}  ${bold(String(check.rowCount))}`);
+  write(
+    check.baselineEstablished
+      ? `  ${cyan('BASELINE')} established — this collector is now monitored.`
+      : `  ${amber('unexpected:')} a baseline already existed for a brand-new collector`,
+  );
+
+  write(`\n  ${dim('Next:')} molt check ${result.collector.id}`);
+  return 0;
+}
+
+interface AddArgs {
+  readonly url: string | null;
+  readonly description: string;
+  readonly name: string | null;
+  readonly canaryUrl: string | null;
+  readonly force: boolean;
+}
+
+function parseAddArgs(args: readonly string[]): AddArgs {
+  let url: string | null = null;
+  let name: string | null = null;
+  let canaryUrl: string | null = null;
+  let force = false;
+  const descriptionWords: string[] = [];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i] ?? '';
+
+    if (arg === '--force') {
+      force = true;
+    } else if (arg === '--name') {
+      name = args[i + 1] ?? null;
+      i += 1;
+    } else if (arg === '--canary') {
+      canaryUrl = args[i + 1] ?? null;
+      i += 1;
+    } else if (url === null) {
+      url = arg;
+    } else {
+      descriptionWords.push(arg);
+    }
+  }
+
+  return { url, description: descriptionWords.join(' '), name, canaryUrl, force };
 }
 
 /** The raw transcript of every `bdata` invocation Molt has made. */
@@ -442,6 +807,178 @@ export async function cmdLog(context: Context, limitArg?: string): Promise<numbe
 }
 
 /* ------------------------------------------------------------------ */
+
+type DoctorStatus = 'pass' | 'warn' | 'fail';
+
+interface DoctorCheck {
+  readonly label: string;
+  readonly status: DoctorStatus;
+  readonly detail: string;
+}
+
+/** Kept in sync with `engines.node` in the workspace root `package.json`. */
+const MIN_NODE_MAJOR = 20;
+const MIN_NODE_MINOR = 11;
+
+function doctorBadge(status: DoctorStatus): string {
+  if (status === 'pass') return green('✓');
+  if (status === 'warn') return amber('▲');
+  return red('✗');
+}
+
+/**
+ * Preflight the environment itself, rather than a target.
+ *
+ * `molt add` already preflights a *target page* before generation. This
+ * answers the earlier, more basic question — "is this machine even set up to
+ * run Molt at all" — so a missing env var or an unresolvable CLI surfaces as
+ * one clear line here instead of a stack trace three layers deep the first
+ * time a judge or a teammate runs `molt check`.
+ */
+export async function cmdDoctor(context: Context): Promise<number> {
+  write(heading('Doctor'));
+
+  const checks: DoctorCheck[] = [];
+
+  const [major = 0, minor = 0] = process.versions.node.split('.').map(Number);
+  const nodeOk = major > MIN_NODE_MAJOR || (major === MIN_NODE_MAJOR && minor >= MIN_NODE_MINOR);
+  checks.push({
+    label: 'Node.js version',
+    status: nodeOk ? 'pass' : 'fail',
+    detail: nodeOk
+      ? process.version
+      : `${process.version} — requires >=${MIN_NODE_MAJOR}.${MIN_NODE_MINOR}`,
+  });
+
+  try {
+    await context.repo.listCollectors();
+    checks.push({ label: 'Database', status: 'pass', detail: 'reachable' });
+  } catch (error) {
+    checks.push({
+      label: 'Database',
+      status: 'fail',
+      detail: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  try {
+    const entry = resolveCliEntry();
+    checks.push({ label: 'Bright Data CLI', status: 'pass', detail: entry });
+  } catch (error) {
+    checks.push({
+      label: 'Bright Data CLI',
+      status: 'fail',
+      detail: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  // Not fatal on its own: `bdata login` may have stored credentials outside
+  // the environment (a config file under the user's home directory), which
+  // this check has no visibility into either way.
+  const hasCredential = ['BRIGHTDATA_API_KEY', 'BRIGHT_DATA_API_TOKEN'].some((key) => {
+    const value = process.env[key];
+    return value !== undefined && value !== '';
+  });
+  checks.push({
+    label: 'Bright Data credential',
+    status: hasCredential ? 'pass' : 'warn',
+    detail: hasCredential
+      ? 'found in environment'
+      : 'not set in env — fine if `bdata login` has already run',
+  });
+
+  const collectors = await context.repo.listCollectors();
+  checks.push({
+    label: 'Collectors registered',
+    status: collectors.length > 0 ? 'pass' : 'warn',
+    detail:
+      collectors.length > 0
+        ? `${collectors.length} registered`
+        : 'none yet — run molt init or molt add',
+  });
+
+  for (const check of checks) {
+    write(`  ${doctorBadge(check.status)}  ${bold(check.label.padEnd(24))} ${dim(check.detail)}`);
+  }
+
+  // Per-collector target reachability, reusing the exact preflight `molt
+  // add` runs before generation. A target that stopped resolving, started
+  // disallowing robots, or grew past the size ceiling since it was
+  // registered is environment drift indistinguishable from a Molt bug until
+  // something checks the target directly.
+  let anyTargetFailed = false;
+
+  for (const collector of collectors) {
+    write(`\n  ${bold(collector.name)}  ${brand(collector.id)}`);
+
+    const targets: Array<{ label: string; url: string | null }> = [
+      { label: 'target', url: collector.targetUrl },
+      { label: 'canary', url: collector.canaryUrl },
+    ];
+
+    for (const { label, url } of targets) {
+      if (url === null) continue;
+
+      try {
+        const report = await preflightTarget(url);
+        const ok = report.blockers.length === 0;
+        if (!ok) anyTargetFailed = true;
+
+        write(
+          `    ${doctorBadge(ok ? 'pass' : 'fail')}  ${label.padEnd(8)} ${dim(url)}\n` +
+            `           ${dim(
+              `${String(Math.round(report.bytes / 1024))} KB, robots ${
+                report.robotsAllowed ? 'ok' : 'DISALLOWED'
+              }${report.blockers.length > 0 ? `, ${report.blockers.join('; ')}` : ''}`,
+            )}`,
+        );
+      } catch (error) {
+        anyTargetFailed = true;
+        write(
+          `    ${doctorBadge('fail')}  ${label.padEnd(8)} ${dim(url)}\n` +
+            `           ${red(error instanceof Error ? error.message : String(error))}`,
+        );
+      }
+    }
+  }
+
+  const hasFailure = checks.some((c) => c.status === 'fail') || anyTargetFailed;
+
+  write(`\n  ${hasFailure ? red('Some checks failed.') : green('All checks passed.')}`);
+
+  return hasFailure ? 1 : 0;
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Resolve a selector against the env-configured collectors first, then the
+ * database — collectors onboarded at runtime through `molt add` exist only in
+ * the latter.
+ */
+async function resolveTarget(
+  context: Context,
+  selector: string | undefined,
+): Promise<CollectorConfig | null> {
+  const configured = resolveCollector(context, selector);
+  if (configured !== null) return configured;
+
+  if (selector === undefined || selector === '') return null;
+
+  const record = await context.repo.getCollector(selector);
+  if (record === null) return null;
+
+  return {
+    alias: record.name,
+    id: record.id,
+    targetUrl: record.targetUrl,
+    name: record.name,
+    kind: record.kind,
+    recordPath: record.recordPath,
+    inherit: record.inherit,
+    canaryUrl: record.canaryUrl,
+  };
+}
 
 async function findIncident(context: Context, incidentId?: string): Promise<IncidentRecord | null> {
   if (incidentId !== undefined && incidentId !== '') {

@@ -6,6 +6,7 @@ import { Engine } from '../src/engine.js';
 import {
   tickingClock,
   type ApproveOutcome,
+  type CreateOutcome,
   type HealOutcome,
   type RunOutcome,
   type ScraperPort,
@@ -22,6 +23,7 @@ import {
 
 const COLLECTOR = 'c_mt0zo92haylntlolg';
 const URL = 'https://molt-chaos.vercel.app';
+const CANARY_URL = 'https://molt-chaos.vercel.app/canary';
 
 /** Rows shaped like the chaos collector's real output. */
 function healthyRows(count = 20): UnknownRecord[] {
@@ -70,6 +72,9 @@ interface FakeConfig {
   readonly runs: UnknownRecord[][];
   readonly healMode?: 'gate' | 'done' | 'fail' | 'blocked';
   readonly approveFails?: boolean;
+  /** Rows the held-out canary URL returns. Defaults to healthy rows. */
+  readonly canaryRows?: UnknownRecord[];
+  readonly createFails?: boolean;
 }
 
 class FakeScraper implements ScraperPort {
@@ -78,7 +83,12 @@ class FakeScraper implements ScraperPort {
 
   constructor(private readonly config: FakeConfig) {}
 
-  async run(): Promise<RunOutcome> {
+  async run(request: { url: string }): Promise<RunOutcome> {
+    if (request.url === CANARY_URL) {
+      this.calls.push('run:canary');
+      return { rows: this.config.canaryRows ?? healthyRows(5), command: command(), ok: true };
+    }
+
     this.calls.push('run');
 
     const { runs } = this.config;
@@ -128,6 +138,33 @@ class FakeScraper implements ScraperPort {
       },
       command: command({ display: 'bdata scraper heal c_mt0zo92haylntlolg "…" --json' }),
       previewRows: mode === 'gate' ? healthyRows(3) : [],
+    };
+  }
+
+  async create(request: { url: string; description: string }): Promise<CreateOutcome> {
+    this.calls.push('create');
+
+    if (this.config.createFails === true) {
+      // The observed failure shape: a collector id exists even though
+      // generation failed, because the template is created first.
+      return {
+        envelope: {
+          collector_id: 'c_orphaned01',
+          status: 'failed',
+          completed_steps: ['prepare_intent_analyzer'],
+          error: 'AI generation finished with status "failed".',
+        },
+        command: command({
+          display: `bdata scraper create ${request.url} "…" --json`,
+          exitCode: 1,
+          failed: true,
+        }),
+      };
+    }
+
+    return {
+      envelope: { collector_id: 'c_generated01', status: 'done', name: 'generated' },
+      command: command({ display: `bdata scraper create ${request.url} "…" --json` }),
     };
   }
 
@@ -336,6 +373,32 @@ describe('the full loop, through the approval gate', () => {
       'observed.healthy',
       'verify.recovered',
     ]);
+  });
+
+  it('records the cost of silence on the resolving event', async () => {
+    // Two still-broken observations before the fix lands: the baseline check,
+    // detected, one unattended re-check while nothing was attempted, then the
+    // recovery. "Bad runs" should count the checks that actually observed the
+    // breakage, not every check ever made.
+    const { engine } = await setup({
+      runs: [healthyRows(), brokenRows(), brokenRows(), healthyRows()],
+    });
+
+    await engine.check(COLLECTOR); // baseline
+    await engine.check(COLLECTOR); // detected
+    await engine.check(COLLECTOR); // observed.still-broken
+    const incidentId = (await repo.getOpenIncident(COLLECTOR))?.id ?? '';
+
+    await engine.advanceUntilBlocked(incidentId);
+    await engine.decide(incidentId, 'approve');
+    await engine.advanceUntilBlocked(incidentId);
+
+    const events = await repo.listEvents(incidentId);
+    const resolvedEvent = events.find((e) => e.kind === 'verify.recovered');
+
+    expect(resolvedEvent?.detail).toContain('data was wrong for');
+    // detected + one observed.still-broken = 2 bad runs.
+    expect(resolvedEvent?.detail).toContain('2 runs');
   });
 
   it('stops the unattended walk at the gate rather than approving itself', async () => {
@@ -556,6 +619,166 @@ describe('an auto-approved heal', () => {
 
     expect(resolved.state).toBe('resolved');
     expect(resolved.closedAt).not.toBeNull();
+  });
+});
+
+describe('canary verification', () => {
+  /** Re-register the collector with a held-out canary URL. */
+  async function withCanary(): Promise<void> {
+    await repo.saveCollector({
+      id: COLLECTOR,
+      name: 'molt-chaos',
+      targetUrl: URL,
+      kind: 'chaos',
+      recordPath: 'changelog_entries',
+      inherit: [],
+      canaryUrl: CANARY_URL,
+      createdAt: '2026-08-20T00:00:00.000Z',
+    });
+  }
+
+  it('closes the incident only after the fix also works on the canary', async () => {
+    await withCanary();
+    const { scraper, engine } = await setup({
+      runs: [healthyRows(), brokenRows(), healthyRows()],
+      canaryRows: healthyRows(5),
+    });
+
+    await engine.check(COLLECTOR);
+    const incidentId = (await engine.check(COLLECTOR)).incident?.id ?? '';
+
+    await engine.advanceUntilBlocked(incidentId);
+    await engine.decide(incidentId, 'approve');
+    const verified = await engine.advanceUntilBlocked(incidentId);
+
+    expect(verified.state).toBe('resolved');
+    // The canary run happened, against the held-out URL.
+    expect(scraper.calls).toContain('run:canary');
+
+    const events = await repo.listEvents(incidentId);
+    const canaryEvent = events.find((e) => e.kind === 'verify.canary');
+    expect(canaryEvent?.detail).toContain('recovers on');
+  });
+
+  it('refuses to close when the fix overfits the primary page', async () => {
+    await withCanary();
+    // Primary target recovers after the heal, but the canary page still shows
+    // the broken extraction — the signature of an overfitted fix.
+    const { engine } = await setup({
+      runs: [healthyRows(), brokenRows(), healthyRows()],
+      canaryRows: brokenRows(5),
+    });
+
+    await engine.check(COLLECTOR);
+    const incidentId = (await engine.check(COLLECTOR)).incident?.id ?? '';
+
+    await engine.advanceUntilBlocked(incidentId);
+    await engine.decide(incidentId, 'approve');
+    const verified = await engine.advance(incidentId);
+
+    // verify.failed, not resolved: the incident reopens for another attempt.
+    expect(verified.incident.state).toBe('detected');
+    expect(verified.incident.closedAt).toBeNull();
+
+    const events = await repo.listEvents(incidentId);
+    const failed = events.find((e) => e.kind === 'verify.failed');
+    expect(failed?.detail).toContain('canary');
+  });
+
+  it('treats an empty canary harvest as a failure, not a pass', async () => {
+    await withCanary();
+    const { engine } = await setup({
+      runs: [healthyRows(), brokenRows(), healthyRows()],
+      canaryRows: [],
+    });
+
+    await engine.check(COLLECTOR);
+    const incidentId = (await engine.check(COLLECTOR)).incident?.id ?? '';
+
+    await engine.advanceUntilBlocked(incidentId);
+    await engine.decide(incidentId, 'approve');
+    const verified = await engine.advance(incidentId);
+
+    expect(verified.incident.state).not.toBe('resolved');
+
+    const events = await repo.listEvents(incidentId);
+    expect(events.find((e) => e.kind === 'verify.canary')?.detail).toContain('0 rows');
+  });
+
+  it('does not pollute the collector history with canary snapshots', async () => {
+    await withCanary();
+    const { engine } = await setup({
+      runs: [healthyRows(), brokenRows(), healthyRows()],
+      canaryRows: healthyRows(5),
+    });
+
+    await engine.check(COLLECTOR);
+    const incidentId = (await engine.check(COLLECTOR)).incident?.id ?? '';
+    await engine.advanceUntilBlocked(incidentId);
+    await engine.decide(incidentId, 'approve');
+    await engine.advanceUntilBlocked(incidentId);
+
+    // baseline + broken + verify — the canary run must not appear here.
+    const snapshots = await repo.listSnapshots(COLLECTOR);
+    expect(snapshots).toHaveLength(3);
+  });
+
+  it('skips the canary entirely when none is configured', async () => {
+    const { scraper, engine } = await setup({
+      runs: [healthyRows(), brokenRows(), healthyRows()],
+    });
+
+    await engine.check(COLLECTOR);
+    const incidentId = (await engine.check(COLLECTOR)).incident?.id ?? '';
+    await engine.advanceUntilBlocked(incidentId);
+    await engine.decide(incidentId, 'approve');
+    const verified = await engine.advanceUntilBlocked(incidentId);
+
+    expect(verified.state).toBe('resolved');
+    expect(scraper.calls).not.toContain('run:canary');
+  });
+});
+
+describe('onboarding a new collector', () => {
+  it('registers the generated collector and records the command', async () => {
+    const { engine } = await setup({ runs: [healthyRows()] });
+
+    const result = await engine.createCollector({
+      url: 'https://example.com/listing',
+      description: 'Extract every entry with title and count.',
+      canaryUrl: 'https://example.com/listing/page/2',
+    });
+
+    expect(result.collector?.id).toBe('c_generated01');
+    expect(result.collector?.kind).toBe('custom');
+    expect(result.collector?.canaryUrl).toBe('https://example.com/listing/page/2');
+    // Defaulted from the URL, since no name was given.
+    expect(result.collector?.name).toBe('example.com');
+
+    expect((await repo.listRecentCommands(1))[0]?.display).toContain('scraper create');
+
+    // And the collector is immediately checkable: first run baselines it.
+    const check = await engine.check('c_generated01');
+    expect(check.baselineEstablished).toBe(true);
+  });
+
+  it('registers nothing when generation fails, but keeps the evidence', async () => {
+    const { engine } = await setup({ runs: [healthyRows()], createFails: true });
+
+    const result = await engine.createCollector({
+      url: 'https://example.com/huge-page',
+      description: 'Extract everything.',
+    });
+
+    expect(result.collector).toBeNull();
+    // The orphan's id is preserved in the envelope for the cleanup note.
+    expect(result.envelope.collector_id).toBe('c_orphaned01');
+    expect(result.envelope.error).toContain('failed');
+
+    // No phantom collector in the fleet…
+    expect(await repo.getCollector('c_orphaned01')).toBeNull();
+    // …but the failed command is in the transcript.
+    expect((await repo.listRecentCommands(1))[0]?.failed).toBe(true);
   });
 });
 

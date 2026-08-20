@@ -12,6 +12,17 @@
 
 export { diagnose, HEAL_PROMPT_MAX_CHARS, type Diagnosis, type DiagnoseOptions } from './prompt.js';
 
+export {
+  isFirstTrySuccess,
+  learnPromptPreferences,
+  MIN_LEARNING_SAMPLE,
+  NO_PREFERENCES,
+  promptFeaturesOf,
+  type HealAttemptOutcome,
+  type PromptFeatures,
+  type PromptPreferences,
+} from './learning.js';
+
 export { code, count, fieldWord, isoDate, magnitude, nameList, percent } from './format.js';
 
 export {
@@ -20,3 +31,11 @@ export {
   COMPARABLE_SAMPLE_RATIO,
   type ReviewRow,
 } from './review.js';
+
+export {
+  costOfSilence,
+  describeCostOfSilence,
+  formatDuration,
+  type CostOfSilence,
+  type CostOfSilenceInput,
+} from './cost.js';

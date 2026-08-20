@@ -21,6 +21,7 @@ function heatCellClass(cell: Cell | undefined): string {
       return `bg-[#5a96ff] ${opacity}`;
     case 'degraded':
     case 'distorted':
+    case 'flatlined':
       return `bg-[var(--warn)] ${opacity}`;
     case 'collapsed':
     case 'vanished':

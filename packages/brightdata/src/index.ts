@@ -38,4 +38,27 @@ export {
 
 export { projectRows, readPath, type RowProjection, type UnknownRecord } from './project.js';
 
+export {
+  analyseLinks,
+  isPathAllowed,
+  parseRobots,
+  preflightTarget,
+  TARGET_SIZE_LIMIT_BYTES,
+  type LinkAnalysis,
+  type PreflightOptions,
+  type PreflightReport,
+  type RobotsRule,
+} from './preflight.js';
+
 export { REDACTED, redactArgv, redactText } from './redact.js';
+
+export {
+  classifyCommand,
+  DEFAULT_CREDIT_WEIGHTS,
+  estimateCommandCredits,
+  summariseCredits,
+  COMMAND_KINDS,
+  type CommandKind,
+  type CreditsSummary,
+  type CreditWeights,
+} from './credits.js';

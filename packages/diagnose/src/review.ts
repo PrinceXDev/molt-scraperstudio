@@ -88,6 +88,22 @@ export function buildReviewRows(
         };
       }
 
+      case 'flatlined':
+        // Detection and recovery use the same bar: the fault is "one distinct
+        // value", so the field has recovered when the preview shows more than
+        // one. Distinct counts are not comparable across sample sizes the way
+        // medians are not, which is exactly why the threshold is 2, not
+        // "back to baseline variety".
+        return {
+          field: finding.field,
+          measure: 'value',
+          baseline: finding.baselineDistinct,
+          broken: finding.currentDistinct,
+          preview: stat?.distinct ?? 0,
+          recovered: (stat?.distinct ?? 0) > 1,
+          wasFaulty: true,
+        };
+
       case 'collapsed':
         return {
           field: finding.field,

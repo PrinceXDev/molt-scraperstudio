@@ -8,8 +8,13 @@ import type { FieldStats, HealthReport } from '@molt/health';
  * states; this module owns what those states are called on disk.
  */
 
-/** Which of the two collectors a row belongs to. */
-export type CollectorKind = 'primary' | 'chaos';
+/**
+ * Which fleet role a collector plays.
+ *
+ * `primary` and `chaos` are the two pinned, env-configured collectors;
+ * `custom` is anything onboarded at runtime through `molt add`.
+ */
+export type CollectorKind = 'primary' | 'chaos' | 'custom';
 
 /**
  * The incident lifecycle.
@@ -67,6 +72,16 @@ export interface CollectorRecord {
   readonly recordPath: string | null;
   /** Wrapper fields merged into each nested record. */
   readonly inherit: readonly string[];
+  /**
+   * A held-out URL for canary verification, when the collector has one.
+   *
+   * A heal is judged against the page whose evidence produced it, so it can
+   * overfit — extraction logic keyed to that one page's quirks. When a canary
+   * URL is set, verification also runs the fixed scraper against this URL,
+   * which the heal never saw, and the previously-broken fields must recover
+   * there too before the incident may close.
+   */
+  readonly canaryUrl: string | null;
   readonly createdAt: string;
 }
 

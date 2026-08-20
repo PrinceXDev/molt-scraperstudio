@@ -46,6 +46,5 @@ jobs:
         # blanking every credential and running again.
         env:
           BRIGHTDATA_API_KEY: ''
-          ANTHROPIC_API_KEY: ''
           MOLT_DATABASE_URL: ':memory:'
         run: pnpm test

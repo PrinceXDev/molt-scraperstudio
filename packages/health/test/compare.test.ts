@@ -250,6 +250,7 @@ describe('compareSnapshots', () => {
       collapseCeiling: 0.1,
       degradeDrop: 0.2,
       distortionFactor: 4,
+      flatlineMinDistinct: 5,
       emptyHarvestFloor: 0.1,
     });
     expect(strict.status).toBe('degraded');
@@ -287,5 +288,121 @@ describe('compareSnapshots', () => {
     expect(report.baselineCapturedAt).toBe(BASELINE_AT);
     expect(report.candidateCapturedAt).toBe(CANDIDATE_AT);
     expect(report.collectorId).toBe('c_moltdemo0001');
+  });
+});
+
+describe('flatline detection', () => {
+  it('catches a categorical field stuck on a single value', () => {
+    // `status` used to carry real variety; now every row says "active". Fill
+    // rate is 100%, the median string length barely moves, and every null
+    // check passes — only the collapse in cardinality reveals it.
+    const statuses = ['active', 'archived', 'pending', 'suspended', 'deleted', 'draft'];
+    const baseRows: Row[] = Array.from({ length: 30 }, (_, i) => ({
+      title: `Story ${i}`,
+      status: statuses[i % statuses.length],
+    }));
+    const stuck: Row[] = Array.from({ length: 30 }, (_, i) => ({
+      title: `Story ${i}`,
+      status: 'active',
+    }));
+
+    const report = compareSnapshots(snapshot(baseRows, BASELINE_AT), snapshot(stuck, CANDIDATE_AT));
+
+    expect(report.status).toBe('degraded');
+    expect(report.summary).toBe('1 of 2 fields collapsed to a single repeated value: status');
+
+    const [fault] = report.faults;
+    expect(fault?.kind).toBe('flatlined');
+    if (fault?.kind === 'flatlined') {
+      expect(fault.field).toBe('status');
+      expect(fault.baselineDistinct).toBe(6);
+      expect(fault.currentDistinct).toBe(1);
+      // Still filling on every row — which is exactly why it is dangerous.
+      expect(fault.rate).toBe(1);
+    }
+  });
+
+  it('catches one entry value stamped across every row of a numeric field', () => {
+    // A template bug repeating the first entry's count everywhere. The median
+    // barely moves, so distortion cannot see it; variance can.
+    const baseRows: Row[] = Array.from({ length: 20 }, (_, i) => ({ count: 40 + i }));
+    const stamped: Row[] = Array.from({ length: 20 }, () => ({ count: 47 }));
+
+    const report = compareSnapshots(
+      snapshot(baseRows, BASELINE_AT),
+      snapshot(stamped, CANDIDATE_AT),
+    );
+
+    expect(report.faults[0]?.kind).toBe('flatlined');
+  });
+
+  it('never flags a field that was legitimately near-constant at baseline', () => {
+    // A boolean or a fixed category has one or two distinct values by nature.
+    const baseRows: Row[] = Array.from({ length: 30 }, (_, i) => ({
+      in_stock: i % 2 === 0,
+      currency: 'GBP',
+    }));
+    const constant: Row[] = Array.from({ length: 30 }, () => ({
+      in_stock: true,
+      currency: 'GBP',
+    }));
+
+    const report = compareSnapshots(
+      snapshot(baseRows, BASELINE_AT),
+      snapshot(constant, CANDIDATE_AT),
+    );
+
+    // `in_stock` had 2 distinct values, `currency` had 1 — both below the
+    // 5-distinct confidence floor, so neither can flatline.
+    expect(report.faults).toEqual([]);
+  });
+
+  it('does not judge variance from a sample too small to have any', () => {
+    const baseRows: Row[] = Array.from({ length: 30 }, (_, i) => ({ count: 40 + i }));
+    const tiny: Row[] = [{ count: 47 }, { count: 47 }];
+
+    const report = compareSnapshots(snapshot(baseRows, BASELINE_AT), snapshot(tiny, CANDIDATE_AT));
+
+    // Two rows sharing a value is not evidence of a flatline. (The row-count
+    // collapse itself is an empty harvest, which is a separate verdict.)
+    expect(report.faults.filter((f) => f.kind === 'flatlined')).toEqual([]);
+  });
+
+  it('prefers the zeroed verdict when a field flatlines at zero', () => {
+    // distinct === 1 is also true of a zeroed field, but "returned only
+    // zeros" is the sharper, more actionable verdict and must win.
+    const baseRows: Row[] = Array.from({ length: 20 }, (_, i) => ({ price: 1200 + i }));
+    const zeroed: Row[] = Array.from({ length: 20 }, () => ({ price: 0 }));
+
+    const report = compareSnapshots(
+      snapshot(baseRows, BASELINE_AT),
+      snapshot(zeroed, CANDIDATE_AT),
+    );
+
+    expect(report.faults[0]?.kind).toBe('distorted');
+    expect(report.summary).toContain('returned only zeros');
+  });
+
+  it('treats a baseline without distinct counts as unknown, never as a fault', () => {
+    // Snapshots persisted before `distinct` existed rehydrate without it.
+    const candidate = snapshot(
+      Array.from({ length: 20 }, () => ({ count: 47 })),
+      CANDIDATE_AT,
+    );
+
+    const legacyBaseline: Snapshot = {
+      ...snapshot(
+        Array.from({ length: 20 }, (_, i) => ({ count: 40 + i })),
+        BASELINE_AT,
+      ),
+      fields: snapshot(
+        Array.from({ length: 20 }, (_, i) => ({ count: 40 + i })),
+        BASELINE_AT,
+      ).fields.map(({ distinct: _distinct, ...rest }) => rest),
+    };
+
+    const report = compareSnapshots(legacyBaseline, candidate);
+
+    expect(report.faults.filter((f) => f.kind === 'flatlined')).toEqual([]);
   });
 });
