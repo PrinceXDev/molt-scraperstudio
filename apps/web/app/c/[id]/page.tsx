@@ -12,7 +12,8 @@ export const dynamic = 'force-dynamic';
 function heatCellClass(cell: Cell | undefined): string {
   if (cell === undefined) return 'bg-[var(--line-soft)] opacity-30';
   if (cell.kind === 'distorted' && cell.magnitude === 0) return 'bg-[var(--bad)] opacity-100';
-  const opacity = cell.kind === 'healthy' || cell.kind === 'appeared' ? 'opacity-55' : 'opacity-100';
+  const opacity =
+    cell.kind === 'healthy' || cell.kind === 'appeared' ? 'opacity-55' : 'opacity-100';
   switch (cell.kind) {
     case 'healthy':
       return `bg-[var(--good)] ${opacity}`;

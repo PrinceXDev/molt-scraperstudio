@@ -128,9 +128,7 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
                 <span className="mono faint text-[11.5px]">{timeOnly(event.at)}</span>
                 <strong className="text-[13px]">{event.kind}</strong>
               </div>
-              {event.detail && (
-                <div className="muted mt-0.5 text-[12.5px]">{event.detail}</div>
-              )}
+              {event.detail && <div className="muted mt-0.5 text-[12.5px]">{event.detail}</div>}
             </div>
           ))}
         </div>

@@ -120,7 +120,9 @@ export default async function FleetPage() {
                       </span>
                       <span
                         className={`mono text-right ${
-                          isFault ? 'font-bold text-[var(--bad)]' : 'font-normal text-[var(--fg-faint)]'
+                          isFault
+                            ? 'font-bold text-[var(--bad)]'
+                            : 'font-normal text-[var(--fg-faint)]'
                         }`}
                       >
                         {cellLabel(current)}

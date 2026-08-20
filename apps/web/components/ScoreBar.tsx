@@ -2,7 +2,11 @@
 export function ScoreBar({ score }: { score: number }) {
   const clamped = Math.max(0, Math.min(100, score));
   const colorClass =
-    clamped >= 90 ? 'text-[var(--good)]' : clamped >= 60 ? 'text-[var(--warn)]' : 'text-[var(--bad)]';
+    clamped >= 90
+      ? 'text-[var(--good)]'
+      : clamped >= 60
+        ? 'text-[var(--warn)]'
+        : 'text-[var(--bad)]';
   const barColorClass =
     clamped >= 90 ? 'bg-[var(--good)]' : clamped >= 60 ? 'bg-[var(--warn)]' : 'bg-[var(--bad)]';
 
