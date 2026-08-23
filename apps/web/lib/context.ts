@@ -68,7 +68,11 @@ async function build(): Promise<Context> {
   const root = findRepoRoot(process.cwd());
   loadDotEnv(root);
 
-  const db = await openDatabase({ url: resolveDatabaseUrl(root) });
+  const authToken = process.env['MOLT_DATABASE_AUTH_TOKEN'];
+  const db = await openDatabase({
+    url: resolveDatabaseUrl(root),
+    ...(authToken === undefined || authToken === '' ? {} : { authToken }),
+  });
   const repo = new Repository(db);
   const scraper = new CliScraper();
   const engine = new Engine({ repo, scraper, clock: systemClock });

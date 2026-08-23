@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import { createClient, type Client, type InValue } from '@libsql/client';
+import type { Client, InValue } from '@libsql/client';
 
 /**
  * Persistence for Molt.
@@ -111,11 +111,19 @@ CREATE INDEX IF NOT EXISTS commands_recent ON commands (id DESC);
 
 export interface OpenOptions {
   /**
-   * libSQL URL. `:memory:` for tests, `file:./data/molt.db` otherwise.
+   * libSQL URL. `:memory:` for tests, `file:./data/molt.db` for local dev, or
+   * `libsql://…` for a hosted database (e.g. Turso) on a serverless deploy
+   * where the filesystem is ephemeral.
    * Defaults to `MOLT_DATABASE_URL`, then to an in-memory database so nothing
    * silently writes to disk during a test run.
    */
   readonly url?: string;
+
+  /**
+   * Auth token for a `libsql://` URL. Ignored for `file:`/`:memory:`.
+   * Defaults to `MOLT_DATABASE_AUTH_TOKEN`.
+   */
+  readonly authToken?: string;
 }
 
 export interface Database {
@@ -141,10 +149,22 @@ function ensureParentDirectory(url: string): void {
 /** Open a database and ensure the schema exists. Idempotent. */
 export async function openDatabase(options: OpenOptions = {}): Promise<Database> {
   const url = options.url ?? process.env['MOLT_DATABASE_URL'] ?? ':memory:';
+  const authToken = options.authToken ?? process.env['MOLT_DATABASE_AUTH_TOKEN'];
 
   ensureParentDirectory(url);
 
-  const client = createClient({ url });
+  // `@libsql/client`'s Node build unconditionally `require()`s the native
+  // `libsql` binary at import time — needed for `file:`/`:memory:`, but that
+  // native module isn't traceable into a Vercel serverless bundle. The `/web`
+  // build talks to a remote `libsql://` database over HTTP/WS with no native
+  // dependency, so a bundler can inline it completely. Local file-backed use
+  // (the CLI, tests) still needs the real Node client.
+  const isRemote = url.startsWith('libsql:') || url.startsWith('http:') || url.startsWith('https:');
+  const { createClient } = isRemote
+    ? await import('@libsql/client/web')
+    : await import('@libsql/client');
+
+  const client = createClient(authToken ? { url, authToken } : { url });
 
   // `executeMultiple` runs the whole DDL script in one call. Every statement is
   // IF NOT EXISTS, so this is safe on every startup.
