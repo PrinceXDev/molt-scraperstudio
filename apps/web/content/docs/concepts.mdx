@@ -1,0 +1,79 @@
+---
+title: Concepts
+description: Snapshot, baseline, drift, and incident — the five nouns everything else in Molt is built from.
+---
+
+Everything Molt does reduces to comparing two snapshots. This page defines the words precisely enough
+that the rest of the docs can use them without redefining them each time.
+
+## Row
+
+The unit a collector run produces — one scraped record. Molt only ever reasons about fields *within*
+a row and rates *across* rows; it has no concept of row identity or row-to-row matching between runs.
+
+## Snapshot
+
+A `Snapshot` is what one completed run becomes: for every field observed across that run's rows, its
+**fill rate** (the fraction of rows where the field was present), its **value shape**
+(`numeric | text | boolean | list | object | empty | mixed`), and — for numeric fields — a **typical
+magnitude** (the median of the present values).
+
+```ts
+interface SnapshotInput {
+  collectorId: string;
+  capturedAt: string; // ISO-8601, passed in so this stays clock-free
+  rows: readonly Row[];
+  declaredFields?: readonly string[] | null;
+}
+```
+
+`declaredFields` matters more than it looks: passing the collector's `output_schema` lets Molt score a
+field the schema promises but the run never returned at all — a whole-field disappearance that row
+inspection alone cannot see, because a field absent from every row is indistinguishable from a field
+that was never declared.
+
+## Baseline
+
+One snapshot, pinned as "what healthy looks like." Every later snapshot is compared against it, field
+by field. If nothing is explicitly pinned, Molt falls back to the **earliest snapshot on record** —
+see [Baselines](/docs/baselines) for when and why to pin one deliberately instead.
+
+## Drift
+
+The output of `compareSnapshots(baseline, candidate)`: a `HealthReport` containing one `FieldFinding`
+per field, classified into one of seven kinds.
+
+| Kind | Meaning |
+| --- | --- |
+| `healthy` | Filling at or near its baseline rate. Nothing to do. |
+| `collapsed` | Was reliably present, now almost never is — a renamed class or relocated value. |
+| `degraded` | Measurably worse but still partly working. Often partial pagination. |
+| `distorted` | Still filling, but the *value* changed character — every price is now `0`. Passes a null check; still wrong. |
+| `flatlined` | Still filling at a plausible magnitude, but every row now carries the same single value where the baseline had variety. |
+| `vanished` | Present in the baseline, absent from the candidate's schema entirely. |
+| `appeared` | New since the baseline. Not a fault — worth showing, never worth healing. |
+
+`collapsed`, `degraded`, `distorted`, `flatlined`, and `vanished` are **faults**; `healthy` and
+`appeared` are not. A report's overall `status` (`healthy | degraded | broken`) is the worst-case
+across every field's finding.
+
+<Constraint>
+A field that returns `0` instead of its real value still fills on every row — its fill rate is
+unchanged. `distorted` exists specifically to catch this, by comparing typical *magnitude*, not
+presence. This is the single most important classification in the system: see
+[Honest limits](/docs/honest-limits) for the incident this rule was written to catch after the fact.
+</Constraint>
+
+## Incident
+
+Opened the moment a snapshot produces a fault, an incident carries the `HealthReport`, the generated
+heal prompt, the heal's preview result, and an attempt counter, and moves through a ten-state machine
+from `detected` to `resolved` (or `escalated`, if nothing fixes it). The full state list and every
+transition between them is [Incident states](/docs/incident-states).
+
+## Command
+
+Every `bdata` CLI invocation Molt makes — `run`, `heal`, `approve`, `reject`, `create` — is recorded
+verbatim (with credentials redacted) as a `Command`, alongside its argv, output, duration, and exit
+code. The terminal drawer in the cockpit and `molt log` both read this same table; nothing about a
+past command is reconstructed or summarised from anywhere else.

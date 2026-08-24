@@ -1,0 +1,88 @@
+---
+title: Heal & review
+description: Why an AI fix is diagnosed automatically but never shipped automatically.
+---
+
+Diagnosing and healing are automatic. Deciding whether the result is actually correct is not, and
+that split is deliberate.
+
+## Diagnose
+
+The moment a fault is found, `packages/diagnose` turns the measured drift into a heal prompt — a
+plain-language description naming the dead fields, their before-and-after numbers, and, just as
+importantly, **the fields that are still working**, so the healer knows what not to touch. This is why
+Molt's heals tend to land on the first attempt: the prompt is derived from evidence, not typed by a
+tired human at 2am.
+
+```text
+`comment_count` still fills but its values changed scale (typical value was 60.5, now 0);
+`download_count` still fills but its values changed scale (typical value was 20,251.5, now 0).
+Every other field is unaffected — do not modify their selectors.
+```
+
+<Constraint>
+The generated prompt is capped at **1000 characters**, matching `bdata scraper heal`'s own limit. See
+[CLI reference](/docs/cli-reference) for every verified size constraint in one place.
+</Constraint>
+
+## Heal
+
+`bdata scraper heal <collector_id> "<prompt>"` runs against the **same collector**, in place — not a
+regenerate. It is an AI-Flow job, so it takes five to twenty-five minutes and returns a
+`previewResult`: rows the healed selector *would* produce, without touching production.
+
+## The human gate
+
+A heal confirms exactly one thing: the field came back non-null. It cannot confirm the value is
+*right*. A healed selector that now grabs the `$499` regular price instead of the `$399` sale price
+passes every check an automated pipeline owns — right type, right shape, no error — while quietly
+shipping the wrong number forever.
+
+So `awaiting_approval` is a state the incident state machine will not leave on its own. The only ways
+out are a human approving or rejecting the proposed fix.
+
+```bash
+molt review
+```
+
+```text
+Proposed fix (2 preview rows)
+field              baseline       broken      preview
+comment_count          60.5            0         18.5  ✓  typical value
+download_count     20,251.5            0      1,688.5  ✓  typical value
+category               100%         100%         100%  ·
+
+Every broken field recovers in the preview.
+```
+
+The web cockpit renders the identical comparison as a full data-diff table — see the review screen at
+`/fleet/i/<id>/review` for any incident currently `awaiting_approval`. Both surfaces read the same
+`buildReviewRows` output; neither is a second implementation of the other.
+
+<Note>
+When the preview has far fewer rows than the baseline — a heal often returns 2 rows where the
+baseline has 60 — Molt says explicitly that the sample is too small to compare *sizes*, while still
+standing behind what it can prove: a zeroed field is no longer zero.
+</Note>
+
+## Decide
+
+```bash
+molt approve
+```
+
+Commits the fix, then immediately re-runs the collector and checks that recovery is the negation of
+the fault, at the same threshold that opened the incident — not merely "some data came back." Only
+then does the incident close as `resolved`.
+
+```bash
+molt reject
+```
+
+Discards the proposed fix and leaves the incident open for `molt watch` to try again with a sharper
+prompt (learned, in part, from why the rejected attempt failed — see `packages/diagnose`'s
+`learnPromptPreferences`).
+
+Approving in the web cockpit runs the exact same `Engine.decide` call — clicking the button in a
+browser and typing `molt approve` in a terminal are the same code path, all the way down to the same
+`bdata` command being spawned.

@@ -1,0 +1,61 @@
+---
+title: molt check
+description: Run a collector once, snapshot the result, and report on its health.
+---
+
+```bash
+molt check [primary|chaos|c_*]
+```
+
+The building block everything else calls. `molt check` runs one collector through the real Bright
+Data CLI, projects the rows, builds a `Snapshot`, compares it to the baseline, and — if the comparison
+finds a fault — opens an incident.
+
+## What it prints
+
+```bash
+molt check chaos
+```
+
+```text
+Checking chaos
+  collector  c_mt101cvbc0o34ghzh
+  target     https://molt-chaos.vercel.app
+
+  running…
+
+$ bdata scraper run c_mt101cvbc0o34ghzh                    1284 ms
+
+  rows  60
+  score  ████████░░░░░░░░░░░░  42
+  status  BROKEN  2 of 8 fields returned only zeros: comment_count, download_count
+
+  field              kind        baseline → now
+  comment_count      distorted   60.5 → 0
+  download_count     distorted   20,251.5 → 0
+
+  incident  i_e956491c-…  detected
+  Next: molt watch
+```
+
+If this is the collector's first run, there is nothing to compare against yet — `check` says so
+explicitly (`BASELINE established`) and exits `0` rather than guessing at health from a single sample.
+
+## Exit codes
+
+| Exit | Meaning |
+| --- | --- |
+| `0` | Healthy, or a baseline was just established. |
+| `2` | The collector is broken — a fault was found. CI can gate on this. |
+
+## Selecting a collector
+
+`primary` and `chaos` are the two aliases pinned in this repository's `.env` (see
+[Onboarding a target](/docs/onboarding-targets) for how a third gets added). Any full `c_*` collector
+ID also works directly, whether or not it has an alias.
+
+## What it does not do
+
+`check` never proposes a fix. A fault only opens an incident and prints `Next: molt watch` — the
+diagnose-and-heal step is a separate, explicit action, so a single `check` invocation never spends
+AI-Flow credits by surprise.

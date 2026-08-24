@@ -1,0 +1,47 @@
+---
+title: Credits
+description: An estimate for relative usage, weighted from the one number Bright Data actually publishes.
+---
+
+<Constraint>
+Bright Data publishes no per-operation credit price list. Every figure on this page, in the CLI, and
+in the cockpit is an **estimate for relative usage** — useful for "which collector is expensive to
+keep healthy", not usable as a bill.
+</Constraint>
+
+## Where the weights come from
+
+`docs/PLAN.md` records the one fact that is actually documented: a single-page `run` costs one credit
+regardless of row count. Everything else is an AI-Flow job with no published cost at all, so Molt
+turns that one fact into a fixed ratio:
+
+| Command kind | Weight |
+| --- | --- |
+| `run` | 1 |
+| `approve` | 1 |
+| `reject` | 0 |
+| `heal` | 12 |
+| `create` | 12 |
+| `unknown` | 0 |
+
+`heal` and `create` are weighted twelve times a `run` because they are the AI-Flow jobs — slow,
+capacity-limited, and (by every account of how these systems are usually priced) the expensive
+operations in the fleet. The weights are overridable in code the moment a real number is published, or
+the moment your own invoice tells you what they actually are.
+
+## Reading it
+
+```bash
+molt credits
+```
+
+```bash
+molt credits chaos
+```
+
+Fleet-wide with no argument, or scoped to one collector. Classification works from a command's own
+`argv`, never from a side channel — so the ledger is reconstructable from the `commands` table alone,
+with no separate bookkeeping to drift out of sync with it.
+
+Every place a credit figure is shown — the CLI, the Fleet page, an incident's cost-of-silence line —
+carries the same tooltip: *estimated relative usage, not a price*.

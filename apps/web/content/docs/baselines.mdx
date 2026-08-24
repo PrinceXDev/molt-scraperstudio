@@ -1,0 +1,65 @@
+---
+title: Baselines
+description: What "healthy" means for a collector, and the two moments a human should override it.
+---
+
+Every comparison Molt makes is against a baseline. Get the baseline wrong and every verdict downstream
+is wrong with it, so this page is short and specific on purpose.
+
+## The default
+
+If nothing is explicitly pinned, `Repository.getBaseline` falls back to the **earliest snapshot on
+record** for that collector. For most collectors, most of the time, this is exactly right: the first
+successful run *is* what healthy looked like.
+
+## Inspecting it
+
+```bash
+molt baseline show chaos
+```
+
+```text
+Baseline show — chaos
+  collector  c_mt101cvbc0o34ghzh
+
+  captured  2026-08-20T09:12:03.000Z
+  rows      60
+  fields    8
+  source    earliest snapshot (fallback)
+  id        s_3fbd21a0-…
+```
+
+`source` tells you which of the two states you are in — `earliest snapshot (fallback)` or
+`explicitly pinned` — because those two states call for different levels of trust in the number.
+
+## Pinning one deliberately
+
+```bash
+molt baseline set chaos
+```
+
+Pins the collector's **most recent snapshot** as the baseline. Pass a specific snapshot ID as a third
+argument to pin an older one instead:
+
+```bash
+molt baseline set chaos s_3fbd21a0-1234-4c9a-9abc-1234567890ab
+```
+
+Do this after a **legitimate** redesign of the target site — a genuine new normal, not a fault. Once
+pinned, every future comparison measures against this snapshot, not against history.
+
+## Un-pinning
+
+```bash
+molt baseline reset chaos
+```
+
+Clears the pin and falls back to the earliest snapshot again. Use this if a heal was accidentally
+pinned as a baseline, or a one-off bad run got set by mistake — the fallback is always there to land
+on.
+
+<Constraint>
+Setting and resetting a baseline are both **explicit, human-invoked actions.** The engine never moves
+a baseline on its own outside these two commands — silently moving the goalposts is the last thing a
+reliability tool should do unasked.
+</Constraint>

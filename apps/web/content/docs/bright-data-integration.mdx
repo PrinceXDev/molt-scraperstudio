@@ -1,0 +1,66 @@
+---
+title: Bright Data integration
+description: How Molt talks to Scraper Studio — mutations through the real CLI, telemetry through REST, credentials redacted at the boundary.
+---
+
+`packages/brightdata` is the **only** place in the repository allowed to import `node:child_process`
+or call `fetch` against Bright Data. Every other package, including the web UI, reaches Bright Data
+only through this one.
+
+## Mutations go through the real CLI
+
+`create`, `run`, `heal`, and `approve` all shell out to the actual `@brightdata/cli` binary — never a
+reimplemented HTTP call — so the terminal remains the real control plane and every command is
+recordable exactly as a person would have typed it.
+
+```ts
+const argv = [process.execPath, entry, ...args];
+spawn(process.execPath, [entry, ...args], { shell: false });
+```
+
+Spawned as `process.execPath` plus the CLI's resolved `dist/index.js`, **never through a shell.** Two
+reasons: Node refuses to spawn a `.cmd` shim without `shell: true` on Windows, and enabling a shell
+would let a heal prompt's own quotes be reinterpreted by the shell before the CLI ever sees them —
+exactly the kind of injection a generated, human-readable string should never be trusted with.
+
+## Telemetry goes through REST
+
+Read-only data the CLI does not expose — credit-adjacent figures, fleet-wide state — is fetched over
+REST instead. Nothing here is a mutation; the CLI stays the only writer.
+
+## Credentials are redacted at the boundary
+
+```ts
+export const REDACTED = '«redacted»';
+```
+
+Every recorded command's argv and stdout passes through `redactArgv` / `redactText` **before** it is
+stored — not before it is displayed. The terminal drawer in the cockpit renders these same records
+verbatim, which is exactly why redaction has to happen upstream of storage: an API key that reaches
+the `commands` table can reach a screenshot, a committed fixture, or a demo recording, and no
+downstream consumer should have to remember to scrub it.
+
+Bright Data API keys are 64-character hex strings; anything matching that shape, any `Bearer` token in
+captured HTTP debug output, and the argument following `-k` / `--api-key` / `--token` / `--apikey` are
+all replaced unconditionally.
+
+## AI-Flow jobs are serialised through one slot
+
+```text
+bdata scraper create and bdata scraper heal are AI-Flow jobs behind a
+concurrent-job cap: the CLI's own --max-retries flag exists to wait out the
+resulting 429, backing off up to about four minutes. Running two heals at once
+therefore does not go faster — it goes slower, and unpredictably so.
+```
+
+A `SerialQueue` holds exactly one slot for `create`/`heal` calls fleet-wide. `run` and `approve` are
+unaffected and stay concurrent — only the two operations that actually contend for Scraper Studio's
+job cap are queued. A failed task does not poison the queue: the chain continues from a settled
+promise, so one crashed heal cannot wedge every heal queued behind it.
+
+<Constraint>
+This is also why a *second* heal on the same collector gets refused with a `409` if one is already
+`awaiting_approval` — Scraper Studio itself allows only one refactor job per collector at a time,
+independent of Molt's own queue. [`molt unblock`](/docs/doctor-and-unblock) exists specifically to
+clear that condition.
+</Constraint>

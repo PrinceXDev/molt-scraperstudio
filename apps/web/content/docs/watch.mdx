@@ -1,0 +1,51 @@
+---
+title: molt watch
+description: Advance every open incident as far as it can go automatically — which stops at the approval gate.
+---
+
+```bash
+molt watch
+```
+
+Finds every incident that has not closed, and calls `Engine.advance` on each one repeatedly (up to
+eight steps) until either it runs out of automatic work to do, or it lands in a state that needs a
+human.
+
+## What one step does
+
+Each call to `advance` performs exactly the next mechanical step for an incident's current state —
+composing the heal prompt while `diagnosing`, calling `bdata scraper heal` while `healing`, and so on
+— and returns either `performed` (what it just did) or `null` with a `note` explaining why it stopped.
+
+```text
+Advancing 2 open incident(s)
+
+  i_e956491c-…  DETECTED
+    → diagnose.start   diagnosing
+    → heal.start       awaiting_approval
+    ⏸ awaiting a human decision on the proposed fix
+    review: molt review i_e956491c-…
+
+  i_7a21f4b0-…  HEALING
+    ⏸ heal is already awaiting_approval; run molt review or molt unblock
+```
+
+## Exit codes
+
+| Exit | Meaning |
+| --- | --- |
+| `0` | Every open incident either resolved or had nothing further to do automatically. |
+| `3` | At least one incident is now `awaiting_approval` and needs `molt review`. |
+
+<Constraint>
+`watch` never crosses the approval gate itself. `awaiting_approval` is a state the engine will not
+leave on its own by design — see [The human gate](/docs/heal-and-review#the-human-gate) for why, and
+do not expect a flag to skip it: none exists in this CLI today.
+</Constraint>
+
+## Running it unattended
+
+`.github/workflows/molt-watch.yml` runs `molt watch` on a schedule against the real fleet. It
+advances every incident it can, and stops the same way a human running it interactively would — at
+the gate, never past it. A scheduled `watch` is how drift gets *detected and diagnosed* continuously;
+the decision to ship a fix still happens in `molt review` / `molt approve`.
