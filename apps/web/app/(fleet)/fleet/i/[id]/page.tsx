@@ -54,9 +54,11 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
   return (
     <>
       <div className="crumb">
-        <Link href="/">Fleet</Link> /{' '}
-        <Link href={`/c/${incident.collectorId}`}>{collector?.name ?? incident.collectorId}</Link> /
-        incident
+        <Link href="/fleet">Fleet</Link> /{' '}
+        <Link href={`/fleet/c/${incident.collectorId}`}>
+          {collector?.name ?? incident.collectorId}
+        </Link>{' '}
+        / incident
       </div>
 
       <div className="page-head flex items-end justify-between">
@@ -82,7 +84,7 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
 
       {incident.state === 'awaiting_approval' && (
         <Link
-          href={`/i/${incident.id}/review`}
+          href={`/fleet/i/${incident.id}/review`}
           className="card block border-[var(--accent)] bg-[var(--accent-bg)]"
         >
           <strong className="text-[var(--accent)]">A fix is awaiting your review →</strong>

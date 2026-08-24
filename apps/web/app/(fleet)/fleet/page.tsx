@@ -53,7 +53,7 @@ export default async function FleetPage() {
 
       <div className="grid grid-cols-1">
         {rows.map(({ collector, latest, open, heatmap, credits }) => (
-          <Link key={collector.id} href={`/c/${collector.id}`} className="card block">
+          <Link key={collector.id} href={`/fleet/c/${collector.id}`} className="card block">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="mb-1 flex items-center gap-2.5">

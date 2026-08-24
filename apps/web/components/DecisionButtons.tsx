@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 
-import { approveIncident, rejectIncident } from '@/app/i/[id]/review/actions';
+import { approveIncident, rejectIncident } from '@/app/(fleet)/fleet/i/[id]/review/actions';
 
 /**
  * The two buttons that matter.

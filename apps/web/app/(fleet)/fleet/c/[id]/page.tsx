@@ -32,7 +32,7 @@ export default async function CollectorPage({ params }: { params: Promise<{ id: 
   return (
     <>
       <div className="crumb">
-        <Link href="/">Fleet</Link> / {collector.name}
+        <Link href="/fleet">Fleet</Link> / {collector.name}
       </div>
 
       <div className="page-head flex items-end justify-between">
