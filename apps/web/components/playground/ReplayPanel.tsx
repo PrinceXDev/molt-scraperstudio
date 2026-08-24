@@ -159,8 +159,7 @@ export function ReplayPanel() {
         <TextArea
           label={
             <>
-              Baseline rows{' '}
-              <span className="font-normal text-faint">— the healthy reference</span>
+              Baseline rows <span className="font-normal text-faint">— the healthy reference</span>
             </>
           }
           value={baseline}
