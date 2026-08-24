@@ -7,7 +7,7 @@ import { getRegisteredCollector } from '@/lib/registered-collector';
 export const metadata: Metadata = {
   title: 'Playground',
   description:
-    'Preflight a real URL, replay drift detection, run a live check, or generate a real collector from a URL and a plain-language description — no account needed for the first two.',
+    'The Bright Data Scraper Studio pipeline, running live: preflight a real URL, replay drift detection, run a live check, or generate a real collector — no account needed for the first two.',
 };
 
 /**
@@ -37,17 +37,20 @@ export default async function PlaygroundPage() {
       <header className="max-w-2xl">
         <p className="flex items-center gap-2.5 font-mono text-eyebrow font-semibold uppercase text-faint">
           <span aria-hidden="true" className="h-px w-6 bg-line-strong" />
-          Playground
+          Playground · Bright Data Scraper Studio
         </p>
         <h1 className="mt-6 text-display-sm font-semibold sm:text-display-md">
-          <span className="block text-muted">Run the real thing.</span>
-          <span className="block text-ink">No account, no credits.</span>
+          <span className="block text-muted">The Bright Data pipeline,</span>
+          <span className="block text-ink">running right here.</span>
         </h1>
         <p className="prose-measure mt-5 text-[1rem] leading-relaxed text-muted">
-          The first two tabs run genuine Molt code paths in your browser — the same target preflight
-          that gates collector generation, and the same drift-detection core that opens incidents.
-          Neither needs a Bright Data account. The last two spend real credits against one, and say
-          so plainly before they run.
+          Every tab runs a real piece of the pipeline Bright Data's Scraper Studio actually drives —
+          not a simulation of it. Preflight checks a URL exactly the way the intent analyser would
+          before spending a <code className="font-mono text-ink">scraper create</code>; Drift replay
+          runs the same detection core a live Bright Data run feeds into. Neither needs an account.
+          Live check and Create a collector call the real <code className="font-mono text-ink">bdata</code>{' '}
+          CLI against a real Bright Data account and spend real credits — and say so plainly before
+          they run.
         </p>
       </header>
 

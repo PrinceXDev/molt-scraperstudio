@@ -8,7 +8,11 @@ Scrapers don't fail loudly. They lie.
 
 Built for [Into the Scrape-Verse](https://www.wemakedevs.org/hackathons/scrape-verse) · WeMakeDevs × Bright Data
 
+**[▶ Try the live playground](https://web-pink-one-39.vercel.app/playground)** ·
+[Open the cockpit](https://web-pink-one-39.vercel.app/fleet)
+
 [![CI](https://github.com/PrinceXDev/molt-scraperstudio/actions/workflows/ci.yml/badge.svg)](https://github.com/PrinceXDev/molt-scraperstudio/actions/workflows/ci.yml)
+![deployed](https://img.shields.io/badge/live-web--pink--one--39.vercel.app-000000?logo=vercel&logoColor=white)
 ![tests](https://img.shields.io/badge/tests-513%20passing-brightgreen)
 ![Bright Data](https://img.shields.io/badge/Bright%20Data-Scraper%20Studio-e5484d)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
@@ -18,6 +22,10 @@ Built for [Into the Scrape-Verse](https://www.wemakedevs.org/hackathons/scrape-v
 </div>
 
 ---
+
+<p align="center">
+  <img src="assets/media/hero.png" width="880" alt="Molt's field × run heatmap flipping comment_count and download_count to ZEROED while every null and schema check still passes" />
+</p>
 
 > A site renames a CSS class. The request still returns **HTTP 200**. Bright Data still reports the
 > job `done`. The row count is unchanged. And `price` is `null` on all 1,198 rows.
@@ -164,6 +172,9 @@ Two rules make the rest possible:
   work — is tested with no API key and no credits spent.
 
 ## Quickstart
+
+Nothing to install: **[web-pink-one-39.vercel.app](https://web-pink-one-39.vercel.app/)** is the live
+deployment, playground and cockpit included. To run it locally instead —
 
 No database to provision, no API key needed for the tests.
 
