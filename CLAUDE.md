@@ -8,9 +8,17 @@ why things are the way they are.
 
 ## Collector IDs — pinned
 
-**Do not create new collectors.** Generation takes 5–25 minutes, is subject to a concurrent-job cap,
-and a failed attempt leaves an orphan that cannot be deleted programmatically. Use these — both are
-live.
+**Do not create new collectors while working on this repo.** Generation takes 5–25 minutes, is
+subject to a concurrent-job cap, and a failed attempt leaves an orphan that cannot be deleted
+programmatically. Use these — both are live.
+
+This is a rule for you, the agent, during development — not a claim that the product itself never
+creates collectors. `molt add` (`apps/sentinel`) already does, for a maintainer at the terminal, and
+`apps/web`'s `/playground` "Create a collector" tab (`app/(site)/playground/actions.ts`) exposes the
+identical pipeline to a public visitor, deliberately gated behind `MOLT_PLAYGROUND_CREATE=1` (off by
+default), a one-per-hour rate limit, and the same preflight blockers with no `--force` equivalent. If
+you are asked to touch that feature, testing it for real still spends credits and risks an orphan
+exactly as described above — don't flip the flag on and click the button as a way to verify it.
 
 | Role    | Collector ID           | Target                                         |
 | ------- | ---------------------- | ----------------------------------------------- |

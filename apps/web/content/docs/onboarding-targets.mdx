@@ -71,3 +71,10 @@ flight. Molt serialises them through a single slot — see
 [Bright Data integration](/docs/bright-data-integration) — so `molt add` will wait rather than fail if
 something else is mid-heal.
 </Warning>
+
+## Trying it without a terminal
+
+The [playground](/playground)'s "Create a collector" tab runs this exact pipeline from a browser —
+same preflight, same 500-character cap, same baseline check afterward. It is off by default on most
+deployments (`MOLT_PLAYGROUND_CREATE=1` turns it on) and rate-limited to one attempt per caller per
+hour, because a failed create's orphan is exactly as real from a public page as from a terminal.
