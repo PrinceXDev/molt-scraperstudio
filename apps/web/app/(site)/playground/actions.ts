@@ -274,6 +274,13 @@ export async function runLiveCheck(): Promise<ActionResult<LiveCheckSuccess>> {
     const result = await engine.check(chaos.id);
     const [command] = await repo.listRecentCommands(1);
 
+    if (!result.ok) {
+      return fail(
+        `The check itself failed (crashed, timed out, or a non-zero exit) — nothing was ` +
+          `snapshotted. This is not a health verdict; see the command transcript for stderr.`,
+      );
+    }
+
     return {
       ok: true,
       collectorId: result.collectorId,

@@ -2,9 +2,9 @@
  * Credits estimation.
  *
  * Bright Data does not publish a per-operation credit price list — the closest
- * public number is `docs/PLAN.md`'s observation that a single-page `run`
- * costs one credit regardless of how many rows it returns. `heal` and
- * `create` are undocumented AI-Flow jobs with no published cost at all.
+ * public number is that a single-page `run` costs one credit regardless of
+ * how many rows it returns. `heal` and `create` are undocumented AI-Flow jobs
+ * with no published cost at all.
  *
  * So this is deliberately an **estimate for relative usage**, not a billing
  * figure: it turns the one fact we do have (`run` = 1) into a fixed ratio

@@ -99,6 +99,14 @@ export async function cmdCheck(context: Context, selector?: string): Promise<num
     write(renderCommand(command.display, `${command.durationMs} ms`));
   }
 
+  if (!result.ok) {
+    write(
+      `\n  ${red('The run itself failed')} — nothing was snapshotted, no baseline was touched.\n` +
+        `  ${dim('See the command record above for stderr. Safe to retry:')} molt check ${config.alias}`,
+    );
+    return 1;
+  }
+
   write(`\n  ${dim('rows')}  ${bold(String(result.rowCount))}`);
 
   if (result.baselineEstablished) {
@@ -726,6 +734,16 @@ export async function cmdAdd(context: Context, args: readonly string[]): Promise
 
   write(heading('Establishing baseline'));
   const check = await context.engine.check(result.collector.id);
+
+  if (!check.ok) {
+    write(
+      `  ${red('The first run failed')} — no baseline was established. A fresh collector can\n` +
+        `  ${dim('take a first real run into slow batch mode; see the command record above.')}\n` +
+        `  ${dim('Retry when ready:')} molt check ${result.collector.id}`,
+    );
+    return 0;
+  }
+
   write(`  ${dim('rows')}  ${bold(String(check.rowCount))}`);
   write(
     check.baselineEstablished

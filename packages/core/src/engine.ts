@@ -46,12 +46,21 @@ export interface EngineOptions {
 export interface CheckResult {
   readonly collectorId: string;
   readonly report: HealthReport | null;
-  readonly snapshotId: string;
+  /** Null when the run itself failed — nothing was snapshotted. */
+  readonly snapshotId: string | null;
   readonly runId: string;
   /** Set when this run established the first baseline; no report is possible. */
   readonly baselineEstablished: boolean;
   readonly incident: IncidentRecord | null;
   readonly rowCount: number;
+  /**
+   * False when the underlying `bdata scraper run` command itself failed
+   * (crashed, timed out, non-zero exit) — as opposed to succeeding and
+   * genuinely finding nothing. A failed run is not a health signal and must
+   * never be snapshotted or mistaken for an empty-harvest baseline; see the
+   * `run` command's own record for why (`stderr`, `exitCode`).
+   */
+  readonly ok: boolean;
 }
 
 export interface AdvanceResult {
@@ -136,6 +145,25 @@ export class Engine {
       commandId,
     });
 
+    if (!outcome.ok) {
+      // The command itself failed — a crash, a timeout, a non-zero exit. Its
+      // rows (if any survived partial stdout) are not trustworthy data, so
+      // nothing is snapshotted here: a failed run must never be recorded as
+      // an empty-harvest baseline, or every real reading afterwards would
+      // register as drift against a baseline that was never actually taken.
+      // The `run` row above still records the failure for the transcript.
+      return {
+        collectorId: collector.id,
+        report: null,
+        snapshotId: null,
+        runId: run.id,
+        baselineEstablished: false,
+        incident: null,
+        rowCount: rows.length,
+        ok: false,
+      };
+    }
+
     const capturedAt = outcome.command.finishedAt;
     const snapshot = buildSnapshot({ collectorId: collector.id, capturedAt, rows });
 
@@ -160,6 +188,7 @@ export class Engine {
         baselineEstablished: true,
         incident: null,
         rowCount: snapshot.rowCount,
+        ok: true,
       };
     }
 
@@ -169,6 +198,7 @@ export class Engine {
     return {
       collectorId: collector.id,
       report,
+      ok: true,
       snapshotId: saved.id,
       runId: run.id,
       baselineEstablished: false,
@@ -579,6 +609,17 @@ export class Engine {
     if (moved.state !== 'verifying') return moved;
 
     const check = await this.check(incident.collectorId);
+
+    if (!check.ok) {
+      // The verification run itself failed to execute — a crash, a timeout, a
+      // non-zero exit. That is not evidence of recovery (or of anything about
+      // the data at all), so it must not be treated the same as `report ===
+      // null`, which means "nothing to compare" on a genuinely successful run.
+      return this.applyTrigger(moved, 'verify.failed', {
+        detail: 'the verification run itself failed to execute — retry needed',
+      });
+    }
+
     const recovered = check.report === null || check.report.status === 'healthy';
 
     if (!recovered) {
@@ -596,6 +637,14 @@ export class Engine {
       return this.applyTrigger(moved, 'verify.failed', {
         detail: `recovered on the primary target, but not on the canary: ${canary.detail}`,
       });
+    }
+
+    if (check.snapshotId === null) {
+      // Unreachable given the `!check.ok` guard above — `ok: true` always
+      // pairs with a real snapshot. Guarded explicitly rather than asserted,
+      // so a future change to `check()` fails loudly here instead of handing
+      // `setBaseline` a null id.
+      throw new Error('verification check reported ok but produced no snapshot');
     }
 
     await this.repo.setBaseline(check.snapshotId);

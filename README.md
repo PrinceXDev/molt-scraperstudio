@@ -5,22 +5,25 @@
 **Scraper Reliability Engineering for [Bright Data Scraper Studio](https://brightdata.com/products/web-scraper).**
 
 Scrapers don't fail loudly. They lie.
-Molt watches the data, not the transport — then repairs the scraper and proves the repair worked.
 
 Built for [Into the Scrape-Verse](https://www.wemakedevs.org/hackathons/scrape-verse) · WeMakeDevs × Bright Data
+
+[![CI](https://github.com/PrinceXDev/molt-scraperstudio/actions/workflows/ci.yml/badge.svg)](https://github.com/PrinceXDev/molt-scraperstudio/actions/workflows/ci.yml)
+![tests](https://img.shields.io/badge/tests-513%20passing-brightgreen)
+![Bright Data](https://img.shields.io/badge/Bright%20Data-Scraper%20Studio-e5484d)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
+![offline](https://img.shields.io/badge/pnpm%20test-offline%2C%20no%20API%20key-informational)
 
 </div>
 
 ---
 
-## The problem
-
-A site renames a CSS class. The request still returns **HTTP 200**. Bright Data still reports the job
-`done`. The row count is unchanged. And `price` is `null` on all 1,198 rows.
-
-Every monitoring tool watches the wrong layer. Uptime checks pass, error rates are zero, the pipeline
-keeps running — and the numbers are quietly wrong for three weeks until someone notices a report looks
-strange.
+> A site renames a CSS class. The request still returns **HTTP 200**. Bright Data still reports the
+> job `done`. The row count is unchanged. And `price` is `null` on all 1,198 rows.
+>
+> Every monitoring tool watches the wrong layer. Uptime checks pass, error rates are zero, the
+> pipeline keeps running — and the numbers are quietly wrong for three weeks until someone notices a
+> report looks strange.
 
 It gets worse. When Molt's own chaos target moved two numeric fields into a different element, the
 scraper didn't return `null` for them. **It returned `0`.**
@@ -43,15 +46,27 @@ Row count unchanged. Job `done`. HTTP 200. And `download_count: 0` is an entirel
 Molt treats scraper breakage the way SRE treats an outage: detection, diagnosis, remediation, an
 approval gate, verification, and a post-incident record.
 
+```mermaid
+flowchart LR
+    A[check] -->|drift found| B[diagnose]
+    A -->|healthy| A
+    B --> C[heal]
+    C --> D{awaiting_approval}
+    D -->|approve| E[verify]
+    D -->|reject| B
+    E -->|recovered| F[resolved]
+    E -->|still broken| B
+```
+
 | Stage        | What happens                                                                                                                       | Bright Data surface                                                |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | **Detect**   | Run, snapshot, compare to baseline. Fill-rate collapse, schema drift, value distortion, empty harvest.                             | `bdata scraper run`, `/dca/collectors_list`, `/dca/collector/jobs` |
-| **Diagnose** | Compose the heal prompt **from the measured drift** — the dead fields, their before/after numbers, and the fields that still work. | —                                                                  |
-| **Heal**     | Run the real CLI, capture the approval gate and its `preview_result`.                                                              | `bdata scraper heal`                                               |
-| **Review**   | Baseline vs broken vs preview, field by field, measure chosen per field.                                                           | —                                                                  |
-| **Approve**  | A person decides.                                                                                                                  | `bdata scraper approve` / `--reject`                               |
-| **Verify**   | Re-run. The incident closes **only** if the data actually recovered.                                                               | `bdata scraper run`                                                |
-| **Record**   | Immutable timeline, every command verbatim, same `c_*` throughout.                                                                 | `/dca/log/{job_id}`                                                |
+| **Diagnose** | Compose the heal prompt **from the measured drift** — the dead fields, their before/after numbers, and the fields that still work. | —                                                                    |
+| **Heal**     | Run the real CLI, capture the approval gate and its `preview_result`.                                                              | `bdata scraper heal`                                                |
+| **Review**   | Baseline vs broken vs preview, field by field, measure chosen per field.                                                           | —                                                                    |
+| **Approve**  | A person decides.                                                                                                                  | `bdata scraper approve` / `--reject`                                |
+| **Verify**   | Re-run. The incident closes **only** if the data actually recovered.                                                               | `bdata scraper run`                                                 |
+| **Record**   | Immutable timeline, every command verbatim, same `c_*` throughout.                                                                 | `/dca/log/{job_id}`                                                  |
 
 **Bright Data isn't a data source here, it's the architecture.** Molt's whole value — repairing a
 scraper from a plain-language description without changing the Collector ID that downstream systems
@@ -72,13 +87,27 @@ description from the evidence:
 430 characters, generated. That last sentence is the highest-leverage part: telling the healer what
 **not** to touch localises the fix, so it repairs two fields instead of rewriting a working scraper.
 
+## Status
+
+| Capability                                                   | Status | Evidence                                                             |
+| -------------------------------------------------------------- | :----: | ---------------------------------------------------------------------- |
+| Real `create` → real `c_*` Collector ID                        |   ✅   | Two live collectors, table below                                       |
+| Drift detection (fill-rate, schema, distortion, empty harvest) |   ✅   | `packages/health`, 100% pure, no I/O                                    |
+| Heal-prompt generation from measured drift                     |   ✅   | `packages/diagnose`, ≤1000 chars, capped and tested                    |
+| Real `bdata scraper heal`, gated behind human approval          |   ✅   | `apps/sentinel` (`molt watch`/`review`/`approve`)                      |
+| Verification that closes an incident only on measured recovery |   ✅   | `Engine.check` + `runVerify`, `packages/core/test/engine.test.ts`       |
+| Scheduled unattended watch, opens a GitHub issue on drift       |   ✅   | `.github/workflows/molt-watch.yml`                                      |
+| Public playground — preflight, drift replay, live check, create |   ✅   | `apps/web/app/(site)/playground`                                       |
+| Persistent fleet database (not per-run memory)                  |   ✅   | Turso/libSQL, `packages/store`                                         |
+| Cockpit visually re-skinned onto the public design system       |   🚧   | Functionally complete; Phase 5 of the design system rollout is open    |
+
 ## Live collectors
 
 Both are real, and both are the proof.
 
 | Role        | Collector ID           | Target                                                                          | Why                                                                     |
-| ----------- | ---------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **Primary** | `c_mt0z2fn11aj6lk4bdz` | [postgresql.org/support/security](https://www.postgresql.org/support/security/) | Genuine long-tail target. **327 CVE advisories from one page load.**    |
+| ----------- | ---------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **Primary** | `c_mt0z2fn11aj6lk4bdz` | [postgresql.org/support/security](https://www.postgresql.org/support/security/) | Genuine long-tail target. **327 CVE advisories from one page load.**     |
 | **Chaos**   | `c_mt101cvbc0o34ghzh`  | [molt-chaos.vercel.app](https://molt-chaos.vercel.app)                          | Ours, deliberately breakable, so healing can be demonstrated on demand. |
 
 The chaos target exists because most self-healing demos never show healing — nothing breaks on command
@@ -109,6 +138,12 @@ npx -p @brightdata/cli bdata login
 cp .env.example .env   # then paste your collector IDs
 pnpm molt init
 pnpm molt check primary
+```
+
+To run the web app (landing page, docs, and the public playground):
+
+```bash
+pnpm --filter @molt/web dev
 ```
 
 ## The loop, for real
@@ -143,34 +178,35 @@ route around — and `--auto-approve` exists for when you want it gone.
 
 ### Commands
 
-|                                          |                                                             |
-| ---------------------------------------- | ----------------------------------------------------------- |
-| `molt init`                              | register the configured collectors                          |
-| `molt add <url> <description>`           | preflight a target, generate a collector, baseline it       |
-| `molt check [primary\|chaos\|c_*]`       | run a collector and report on its health                    |
-| `molt status`                            | fleet overview with per-field fill-rate history              |
-| `molt credits [collector]`               | estimated credit spend, fleet-wide or per collector          |
-| `molt watch`                             | advance every open incident as far as it can go              |
-| `molt review [incident]`                 | inspect a proposed fix before committing it                  |
-| `molt approve` / `molt reject`           | decide, then verify                                          |
-| `molt unblock [collector]`               | reject a pending heal that is blocking new ones               |
-| `molt baseline <show\|set\|reset>`       | manage what "healthy" means for a collector                  |
-| `molt doctor`                            | check the environment is set up to run Molt at all           |
-| `molt log [n]`                           | transcript of every `bdata` command Molt has run             |
+|                                     |                                                       |
+| ----------------------------------- | ------------------------------------------------------- |
+| `molt init`                         | register the configured collectors                      |
+| `molt add <url> <description>`      | preflight a target, generate a collector, baseline it    |
+| `molt check [primary\|chaos\|c_*]`  | run a collector and report on its health                 |
+| `molt status`                       | fleet overview with per-field fill-rate history           |
+| `molt credits [collector]`          | estimated credit spend, fleet-wide or per collector       |
+| `molt watch`                        | advance every open incident as far as it can go           |
+| `molt review [incident]`            | inspect a proposed fix before committing it                |
+| `molt approve` / `molt reject`      | decide, then verify                                        |
+| `molt unblock [collector]`          | reject a pending heal that is blocking new ones             |
+| `molt baseline <show\|set\|reset>`  | manage what "healthy" means for a collector                 |
+| `molt doctor`                       | check the environment is set up to run Molt at all          |
+| `molt log [n]`                      | transcript of every `bdata` command Molt has run             |
 
 Exit codes are CI-shaped: `0` ok, `2` collector broken, `3` awaiting approval.
 
 ## Architecture
 
-```
-packages/health      PURE. Rows in, health verdict out. No I/O, no clock, no randomness.
-packages/brightdata  The ONLY I/O boundary. Drives the real bdata CLI; redacts credentials.
-packages/diagnose    Drift evidence → heal prompt, ≤1000 chars. Pure.
-packages/store       libSQL + explicit SQL. No ORM, nothing to provision.
-packages/core        The incident state machine (pure) + the engine that drives it.
-apps/sentinel        The `molt` CLI.
-apps/chaos           The deliberately breakable target.
-```
+| Module                | Role                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `packages/health`      | **Pure.** Rows in, health verdict out. No I/O, no clock, no randomness.       |
+| `packages/brightdata`  | **The only I/O boundary.** Drives the real `bdata` CLI; redacts credentials. |
+| `packages/diagnose`    | Drift evidence → heal prompt, ≤1000 chars. Pure.                              |
+| `packages/store`       | libSQL + explicit SQL. No ORM, nothing to provision.                          |
+| `packages/core`        | The incident state machine (pure) + the engine that drives it.                |
+| `apps/sentinel`        | The `molt` CLI.                                                               |
+| `apps/web`             | Public site, docs, playground, and the fleet cockpit.                        |
+| `apps/chaos`           | The deliberately breakable target.                                           |
 
 Two rules make the rest possible:
 
@@ -188,8 +224,8 @@ literally true, and every invocation is recorded verbatim and shown back.
 ## What's verified
 
 ```
-Test Files  17 passed (17)
-     Tests  298 passed (298)
+Test Files  29 passed (29)
+     Tests  513 passed (513)
 ```
 
 Strict TypeScript throughout, including `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.
@@ -198,6 +234,10 @@ The tests exist to protect specific claims:
 
 - **The silent failure is caught.** Real captured output from `c_mt0z2fn11aj6lk4bdz`, with two fields
   killed: same row count, no empty harvest, `status: broken`, exactly the two dead fields named.
+- **A failed command is never mistaken for an empty harvest.** A `bdata scraper run` that crashes or
+  times out must never be recorded as a genuine zero-row baseline — see
+  [docs/DECISIONS.md](docs/DECISIONS.md) for the incident that caught this in the collector this repo
+  actually created.
 - **Approval is not success.** An approved fix that didn't restore the data reopens the incident and
   eventually escalates. Only measured recovery closes one.
 - **The retry loop converges.** The state machine is driven with every verify failing, and asserted to
@@ -211,7 +251,7 @@ The tests exist to protect specific claims:
   on the page the heal was written against.
 - **Approving a fix is not the same as saving it.** Missing `--auto-save` on `scraper approve` silently
   leaves the production template untouched — the exact bug this project caught inside its own code
-  before a demo depended on it (see `docs/DECISIONS.md`).
+  before a demo depended on it.
 
 ## What went wrong along the way
 
@@ -228,25 +268,39 @@ The tests exist to protect specific claims:
   now verify the live `x-chaos-layout` header matches what was requested.
 - The review screen judged recovery on a stricter threshold than detection, and marked an obviously
   recovered field as broken. Rendering the comparison is what exposed it.
+- A freshly created collector's very first run went into Bright Data's slow batch mode and failed
+  outright — and the engine recorded that failure as a valid, empty baseline. Fixed by making a failed
+  command a distinct outcome from a genuine empty harvest, never the same thing.
 
 ## Docs
 
 |                                        |                                                          |
 | -------------------------------------- | -------------------------------------------------------- |
-| [docs/PLAN.md](docs/PLAN.md)           | The full design, and how it maps to the judging criteria |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Every real decision, with the evidence that forced it    |
 | [CLAUDE.md](CLAUDE.md)                 | Pinned collector IDs and the verified CLI constraints    |
+| `/docs` (in the running app)           | The public-facing rewrite: quickstart, concepts, CLI reference, architecture, honest limits |
 
-## Verified Bright Data constraints
+## Honest limits
 
-Worth knowing before you build, none of it in the docs:
+Worth knowing before you build, none of it hidden in a footnote:
 
 - `scraper create` descriptions cap at **500 chars**; `heal` prompts at **1000**.
 - `create` and `heal` are AI-Flow jobs behind a **429 concurrent-job cap** — serialise them.
 - Keep target pages under **~200 KB**. The intent analyser fails outright on large documents.
 - Bright Data's scrapers run in Bright Data's cloud and **cannot reach `localhost`**.
+- Credit figures anywhere in Molt are estimates, not a bill — Bright Data publishes no per-operation
+  price list (`packages/brightdata/src/credits.ts` explains the reasoning).
 - The heal envelope carries `diff_summary` and `completed_steps`, both undocumented.
 - The heal pipeline includes a `request_fulfillment_validator` stage.
+
+## A note on how this was built
+
+This project was built with heavy use of Claude (Anthropic) as a coding assistant, in the open, under
+direct review — every change was read, tested, and verified against real Bright Data infrastructure
+before being kept. The decisions, the target selection, the architecture, and the bugs in
+[docs/DECISIONS.md](docs/DECISIONS.md) are real; several of them were caught specifically *because* the
+detection core was pointed at the project's own live collectors, not just at fixtures. Disclosed here
+for the same reason the rest of this README is direct about limits: honesty is the brand.
 
 ---
 

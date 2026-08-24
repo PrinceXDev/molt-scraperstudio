@@ -75,6 +75,12 @@ interface FakeConfig {
   /** Rows the held-out canary URL returns. Defaults to healthy rows. */
   readonly canaryRows?: UnknownRecord[];
   readonly createFails?: boolean;
+  /**
+   * Zero-indexed `run` call numbers (against the primary target only) that
+   * should come back as a failed command — a crash or timeout, not an empty
+   * harvest. Simulates the real batch-mode timeout that motivated this test.
+   */
+  readonly runFailsAt?: readonly number[];
 }
 
 class FakeScraper implements ScraperPort {
@@ -91,9 +97,22 @@ class FakeScraper implements ScraperPort {
 
     this.calls.push('run');
 
-    const { runs } = this.config;
-    const rows = runs[Math.min(this.runIndex, runs.length - 1)] ?? [];
+    const index = this.runIndex;
     this.runIndex += 1;
+
+    if (this.config.runFailsAt?.includes(index) === true) {
+      // A real failure: the CLI process died or timed out. `rows` mirrors
+      // what a truncated `stdout` would parse to — empty — same as a genuine
+      // empty harvest, which is exactly why `ok: false` has to be load-bearing.
+      return {
+        rows: [],
+        command: command({ exitCode: 1, failed: true, stderr: 'timed out in batch mode' }),
+        ok: false,
+      };
+    }
+
+    const { runs } = this.config;
+    const rows = runs[Math.min(index, runs.length - 1)] ?? [];
 
     return { rows, command: command(), ok: true };
   }
@@ -234,6 +253,28 @@ describe('detection', () => {
     expect(first.incident).toBeNull();
     // Projection unwrapped the nested arrays: 20 wrappers, one entry each.
     expect(first.rowCount).toBe(20);
+  });
+
+  it('does not establish a baseline from a run that failed to execute', async () => {
+    const { engine } = await setup({ runs: [healthyRows()], runFailsAt: [0] });
+
+    const first = await engine.check(COLLECTOR);
+
+    expect(first.ok).toBe(false);
+    expect(first.baselineEstablished).toBe(false);
+    expect(first.snapshotId).toBeNull();
+    expect(first.report).toBeNull();
+    // The bug this guards: a failed run must never be recorded as though it
+    // were a genuine empty harvest, or every real run after it would be
+    // compared against a baseline that was never actually taken.
+    expect(await repo.getBaseline(COLLECTOR)).toBeNull();
+
+    // The next, successful run establishes the baseline correctly.
+    const second = await engine.check(COLLECTOR);
+    expect(second.ok).toBe(true);
+    expect(second.baselineEstablished).toBe(true);
+    expect(second.rowCount).toBe(20);
+    expect(await repo.getBaseline(COLLECTOR)).not.toBeNull();
   });
 
   it('opens no incident while the collector is healthy', async () => {

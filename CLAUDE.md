@@ -3,8 +3,8 @@
 Scraper Reliability Engineering for Bright Data Scraper Studio. Detect silent breakage, diagnose it,
 heal it, verify the fix — same Collector ID throughout.
 
-Read [docs/PLAN.md](docs/PLAN.md) for the full design and [docs/DECISIONS.md](docs/DECISIONS.md) for
-why things are the way they are.
+Read [README.md](README.md) for the full design and [docs/DECISIONS.md](docs/DECISIONS.md) for why
+things are the way they are.
 
 ## Collector IDs — pinned
 
