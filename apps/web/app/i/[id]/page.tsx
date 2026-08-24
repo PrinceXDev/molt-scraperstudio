@@ -93,46 +93,48 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
         <div className="card-title">What broke</div>
         <div className="mb-3">{incident.report.summary}</div>
         <ScoreBar score={incident.report.score} />
-        <table className="datagrid mt-4">
-          <thead>
-            <tr>
-              <th>field</th>
-              <th>kind</th>
-              <th className="num">baseline</th>
-              <th className="num">now</th>
-            </tr>
-          </thead>
-          <tbody>
-            {incident.report.faults.map((f) => (
-              <tr key={f.field}>
-                <td className="mono">{f.field}</td>
-                <td>
-                  <span
-                    className={
-                      f.kind === 'collapsed' || f.kind === 'vanished' ? 'diff-broken' : 'muted'
-                    }
-                  >
-                    {f.kind}
-                  </span>
-                </td>
-                <td className="num">
-                  {'baselineRate' in f
-                    ? `${Math.round(f.baselineRate * 100)}%`
-                    : 'baselineMagnitude' in f
-                      ? f.baselineMagnitude
-                      : '—'}
-                </td>
-                <td className="num">
-                  {'currentRate' in f
-                    ? `${Math.round(f.currentRate * 100)}%`
-                    : 'currentMagnitude' in f
-                      ? f.currentMagnitude
-                      : '—'}
-                </td>
+        <div className="scrollable-x mt-4">
+          <table className="datagrid">
+            <thead>
+              <tr>
+                <th>field</th>
+                <th>kind</th>
+                <th className="num">baseline</th>
+                <th className="num">now</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {incident.report.faults.map((f) => (
+                <tr key={f.field}>
+                  <td className="mono">{f.field}</td>
+                  <td>
+                    <span
+                      className={
+                        f.kind === 'collapsed' || f.kind === 'vanished' ? 'diff-broken' : 'muted'
+                      }
+                    >
+                      {f.kind}
+                    </span>
+                  </td>
+                  <td className="num">
+                    {'baselineRate' in f
+                      ? `${Math.round(f.baselineRate * 100)}%`
+                      : 'baselineMagnitude' in f
+                        ? f.baselineMagnitude
+                        : '—'}
+                  </td>
+                  <td className="num">
+                    {'currentRate' in f
+                      ? `${Math.round(f.currentRate * 100)}%`
+                      : 'currentMagnitude' in f
+                        ? f.currentMagnitude
+                        : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {incident.healPrompt && (

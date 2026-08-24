@@ -85,27 +85,79 @@ export function buildHeatmap(
   return { fields, columns };
 }
 
-const CELL_COLOR: Record<CellKind, string> = {
-  healthy: 'var(--good)',
-  appeared: '#5a96ff',
-  degraded: 'var(--warn)',
-  distorted: 'var(--warn)',
-  flatlined: 'var(--warn)',
-  collapsed: 'var(--bad)',
-  vanished: 'var(--bad)',
+/**
+ * Cell classification, expressed as static Tailwind classes.
+ *
+ * This is the *only* place the rule lives. It previously existed three times —
+ * a `cellColor` here returning CSS-variable strings, plus a `barColorClass` in
+ * the Fleet page and a `heatCellClass` in the collector page that each
+ * reimplemented it as classes, because Tailwind's scanner cannot see a class
+ * name assembled at runtime. The two page-local copies were the real ones and
+ * this one was dead, which is exactly the arrangement in which the copies drift
+ * apart. Returning finished class strings from a lookup keyed by a closed union
+ * gives the scanner literal classes to find *and* keeps one definition.
+ *
+ * `severity` is the honest name for what this returns: not a colour, a verdict.
+ */
+export type CellSeverity = 'unknown' | 'good' | 'info' | 'warn' | 'bad';
+
+const SEVERITY: Record<CellKind, CellSeverity> = {
+  healthy: 'good',
+  // A field that appeared is not a fault, but it is not "as baselined" either.
+  appeared: 'info',
+  degraded: 'warn',
+  distorted: 'warn',
+  flatlined: 'warn',
+  collapsed: 'bad',
+  vanished: 'bad',
 };
 
-/** A field zeroed out fills on every row, so it must not read as healthy. */
-export function cellColor(cell: Cell | undefined): string {
-  if (cell === undefined) return 'var(--line-soft)';
-  if (cell.kind === 'distorted' && cell.magnitude === 0) return 'var(--bad)';
-  return CELL_COLOR[cell.kind];
+const SEVERITY_BG: Record<CellSeverity, string> = {
+  unknown: 'bg-line-soft',
+  good: 'bg-good',
+  info: 'bg-info',
+  warn: 'bg-warn',
+  bad: 'bg-bad',
+};
+
+/**
+ * The verdict for one cell.
+ *
+ * The `distorted` + `magnitude === 0` special case is the whole reason this
+ * function exists rather than a bare lookup: a field returning 0 instead of its
+ * real value is *present* on every row, so it fills at 100% and every
+ * fill-rate-based reading calls it healthy. `docs/DECISIONS.md` records this
+ * shipping as a false-green on the Fleet page once already. It is a `bad`, not
+ * a `warn`.
+ */
+export function cellSeverity(cell: Cell | undefined): CellSeverity {
+  if (cell === undefined) return 'unknown';
+  if (cell.kind === 'distorted' && cell.magnitude === 0) return 'bad';
+  return SEVERITY[cell.kind];
 }
 
-export function cellOpacity(cell: Cell | undefined): number {
-  if (cell === undefined) return 0.3;
-  if (cell.kind === 'healthy' || cell.kind === 'appeared') return 0.55;
-  return 1;
+/** Background class for a cell or sparkline bar. */
+export function cellBgClass(cell: Cell | undefined): string {
+  return SEVERITY_BG[cellSeverity(cell)];
+}
+
+/**
+ * Opacity class, so healthy runs recede and faults come forward.
+ *
+ * A grid where every cell is fully saturated makes the reader do the work of
+ * finding the two red columns. Holding "fine" at 55% means a fault is the only
+ * thing at full strength on the screen.
+ */
+export function cellOpacityClass(cell: Cell | undefined): string {
+  const severity = cellSeverity(cell);
+  if (severity === 'unknown') return 'opacity-30';
+  if (severity === 'good' || severity === 'info') return 'opacity-55';
+  return 'opacity-100';
+}
+
+/** Background and opacity together — what a heat cell wants. */
+export function cellClasses(cell: Cell | undefined): string {
+  return `${cellBgClass(cell)} ${cellOpacityClass(cell)}`;
 }
 
 /**

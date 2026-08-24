@@ -117,46 +117,48 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
           <div className="empty-state">The heal returned no preview rows to review.</div>
         ) : (
           <>
-            <table className="datagrid">
-              <thead>
-                <tr>
-                  <th>field</th>
-                  <th className="num">baseline</th>
-                  <th className="num">broken</th>
-                  <th className="num">preview</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const fmt = row.measure === 'fill' ? percent : magnitude;
+            <div className="scrollable-x">
+              <table className="datagrid">
+                <thead>
+                  <tr>
+                    <th>field</th>
+                    <th className="num">baseline</th>
+                    <th className="num">broken</th>
+                    <th className="num">preview</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const fmt = row.measure === 'fill' ? percent : magnitude;
 
-                  return (
-                    <tr key={row.field} className={!row.wasFaulty ? 'opacity-55' : undefined}>
-                      <td className="mono">{row.field}</td>
-                      <td className="num faint">{fmt(row.baseline)}</td>
-                      <td className={`num ${row.wasFaulty ? 'diff-broken' : 'faint'}`}>
-                        {fmt(row.broken)}
-                      </td>
-                      <td
-                        className={`num ${row.wasFaulty ? (row.recovered ? 'diff-recovered' : 'diff-broken') : 'faint'}`}
-                      >
-                        {fmt(row.preview)}
-                      </td>
-                      <td className="w-6 text-center">
-                        {!row.wasFaulty ? (
-                          <span className="faint">·</span>
-                        ) : row.recovered ? (
-                          <span className="text-[var(--good)]">✓</span>
-                        ) : (
-                          <span className="text-[var(--bad)]">✗</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    return (
+                      <tr key={row.field} className={!row.wasFaulty ? 'opacity-55' : undefined}>
+                        <td className="mono">{row.field}</td>
+                        <td className="num faint">{fmt(row.baseline)}</td>
+                        <td className={`num ${row.wasFaulty ? 'diff-broken' : 'faint'}`}>
+                          {fmt(row.broken)}
+                        </td>
+                        <td
+                          className={`num ${row.wasFaulty ? (row.recovered ? 'diff-recovered' : 'diff-broken') : 'faint'}`}
+                        >
+                          {fmt(row.preview)}
+                        </td>
+                        <td className="w-6 text-center">
+                          {!row.wasFaulty ? (
+                            <span className="faint">·</span>
+                          ) : row.recovered ? (
+                            <span className="text-[var(--good)]">✓</span>
+                          ) : (
+                            <span className="text-[var(--bad)]">✗</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
             {sampleTooSmall && (
               <p className="faint mt-3 text-xs">

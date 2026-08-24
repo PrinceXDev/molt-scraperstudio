@@ -4,30 +4,9 @@ import { notFound } from 'next/navigation';
 import { Badge } from '@/components/Badge';
 import { getContext } from '@/lib/context';
 import { relativeTime, timeOnly } from '@/lib/format';
-import { buildHeatmap, type Cell } from '@/lib/heatmap';
+import { buildHeatmap, cellClasses } from '@/lib/heatmap';
 
 export const dynamic = 'force-dynamic';
-
-/** Same classification as `cellColor`/`cellOpacity`, expressed as static Tailwind classes. */
-function heatCellClass(cell: Cell | undefined): string {
-  if (cell === undefined) return 'bg-[var(--line-soft)] opacity-30';
-  if (cell.kind === 'distorted' && cell.magnitude === 0) return 'bg-[var(--bad)] opacity-100';
-  const opacity =
-    cell.kind === 'healthy' || cell.kind === 'appeared' ? 'opacity-55' : 'opacity-100';
-  switch (cell.kind) {
-    case 'healthy':
-      return `bg-[var(--good)] ${opacity}`;
-    case 'appeared':
-      return `bg-[#5a96ff] ${opacity}`;
-    case 'degraded':
-    case 'distorted':
-    case 'flatlined':
-      return `bg-[var(--warn)] ${opacity}`;
-    case 'collapsed':
-    case 'vanished':
-      return `bg-[var(--bad)] ${opacity}`;
-  }
-}
 
 /**
  * Collector — the field × run heatmap.
@@ -89,7 +68,7 @@ export default async function CollectorPage({ params }: { params: Promise<{ id: 
             No baseline yet. Run the collector once to establish one.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="scrollable-x">
             <table className="datagrid">
               <thead>
                 <tr>
@@ -113,7 +92,7 @@ export default async function CollectorPage({ params }: { params: Promise<{ id: 
                       return (
                         <td key={col.capturedAt} className="text-center">
                           <span
-                            className={`heat-cell inline-block ${heatCellClass(cell)}`}
+                            className={`heat-cell inline-block ${cellClasses(cell)}`}
                             title={
                               cell
                                 ? `${field}: ${cell.kind} · rate ${Math.round(cell.rate * 100)}%${cell.magnitude !== null ? ` · typical ${cell.magnitude}` : ''}`
@@ -128,10 +107,10 @@ export default async function CollectorPage({ params }: { params: Promise<{ id: 
               </tbody>
             </table>
             <div className="faint mt-3.5 flex gap-4 text-[11.5px]">
-              <Legend colorClass="bg-[var(--good)]" label="healthy" />
-              <Legend colorClass="bg-[var(--warn)]" label="degraded / distorted" />
-              <Legend colorClass="bg-[var(--bad)]" label="collapsed / vanished / zeroed" />
-              <Legend colorClass="bg-[#5a96ff]" label="new field" />
+              <Legend colorClass="bg-good" label="healthy" />
+              <Legend colorClass="bg-warn" label="degraded / distorted" />
+              <Legend colorClass="bg-bad" label="collapsed / vanished / zeroed" />
+              <Legend colorClass="bg-info" label="new field" />
             </div>
           </div>
         )}
@@ -142,36 +121,41 @@ export default async function CollectorPage({ params }: { params: Promise<{ id: 
         {collectorIncidents.length === 0 ? (
           <div className="empty-state">No incidents. Every run has matched the baseline.</div>
         ) : (
-          <table className="datagrid">
-            <thead>
-              <tr>
-                <th>opened</th>
-                <th>state</th>
-                <th>summary</th>
-                <th className="num">attempts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {collectorIncidents.map((incident) => (
-                <tr key={incident.id}>
-                  <td className="mono faint">{relativeTime(incident.openedAt)}</td>
-                  <td>
-                    <Link
-                      href={
-                        incident.state === 'awaiting_approval'
-                          ? `/i/${incident.id}/review`
-                          : `/i/${incident.id}`
-                      }
-                    >
-                      <Badge value={incident.state} />
-                    </Link>
-                  </td>
-                  <td>{incident.report.summary}</td>
-                  <td className="num">{incident.attempts}</td>
+          // The heatmap table above already had one of these; this one did not,
+          // which made it the last element on the page able to scroll the
+          // document sideways on a phone.
+          <div className="scrollable-x">
+            <table className="datagrid">
+              <thead>
+                <tr>
+                  <th>opened</th>
+                  <th>state</th>
+                  <th>summary</th>
+                  <th className="num">attempts</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {collectorIncidents.map((incident) => (
+                  <tr key={incident.id}>
+                    <td className="mono faint">{relativeTime(incident.openedAt)}</td>
+                    <td>
+                      <Link
+                        href={
+                          incident.state === 'awaiting_approval'
+                            ? `/i/${incident.id}/review`
+                            : `/i/${incident.id}`
+                        }
+                      >
+                        <Badge value={incident.state} />
+                      </Link>
+                    </td>
+                    <td>{incident.report.summary}</td>
+                    <td className="num">{incident.attempts}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </>

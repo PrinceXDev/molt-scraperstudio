@@ -15,7 +15,8 @@
       "!apps/chaos/dist",
       "!**/.molt",
       "!**/data",
-      "!pnpm-lock.yaml"
+      "!pnpm-lock.yaml",
+      "!apps/web/app/globals.css"
     ]
   },
   "assist": {

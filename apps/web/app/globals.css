@@ -1,440 +1,769 @@
 @import "tailwindcss";
 
 /*
- * Design tokens.
+ * Molt design system.
  *
- * Near-black base, one accent — Bright Data red — used only for the sponsor
- * mark, live indicators and primary actions, so it stays legible as "this is
- * the important thing" rather than becoming wallpaper. Semantic colour
- * (green/amber/red) is reserved strictly for health meaning and never reused
- * for decoration. System font stacks throughout: no network fetch at build
- * time, no flash of unstyled text, and it matches the project's own ethos of
- * working with nothing to install.
+ * Two authored themes, not one inverted into the other. The identity is
+ * "ember on graphite": a single hot accent (the ember, inherited from the
+ * Bright Data red and kept because it suits the name) balanced against a cool
+ * `verified` teal, so "this broke" and "this was proven true" read as opposite
+ * temperatures rather than two shades of the same alarm.
+ *
+ * Rules that hold everywhere:
+ *
+ * 1. Semantic colour (good / warn / bad / info) means health and nothing else.
+ *    It is never used decoratively. The accent marks primary action and live
+ *    state; if it becomes wallpaper it stops meaning anything.
+ * 2. Every token is declared here on `:root` and overridden under
+ *    `[data-theme="dark"]`, then mapped into Tailwind via `@theme inline` so
+ *    JSX writes `bg-surface text-muted border-line` instead of
+ *    `bg-[var(--bg-elevated)]`. `inline` matters: it keeps the reference live,
+ *    so a theme swap is one attribute change with no re-render.
+ * 3. Light is the default declaration and dark is the override, but the app
+ *    resolves `prefers-color-scheme` before first paint (see the inline script
+ *    in `app/layout.tsx`), so neither is privileged in practice.
+ *
+ * Legacy aliases (`--bg`, `--fg-muted`, ...) are kept live at the end of each
+ * token block because the cockpit screens still address them through
+ * arbitrary-value classes. They are scheduled for removal when those screens
+ * move onto the primitives; until then both spellings resolve to one value.
  */
 
-:root {
-  --bg: #0a0a0b;
-  --bg-elevated: #131316;
-  --bg-elevated-2: #1a1a1e;
-  --line: #26262c;
-  --line-soft: #1c1c20;
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-  --fg: #e9e9ee;
-  --fg-muted: #9a9aa6;
-  --fg-faint: #66666f;
+/* ------------------------------------------------------------------ *
+ * Light -- "warm paper". Never pure white: #fbfaf9 keeps long-form prose
+ * off the glare ceiling, and the ember is darkened to #d93a25 so it still
+ * clears AA against it.
+ * ------------------------------------------------------------------ */
+
+:root {
+  color-scheme: light;
+
+  --canvas: #fbfaf9;
+  --surface: #ffffff;
+  --surface-2: #f4f3f0;
+  --surface-3: #ebe9e5;
+  --inset: #f7f6f3;
+
+  --line: #e3e1dc;
+  --line-soft: #eeece8;
+  --line-strong: #d2cfc9;
+
+  /*
+   * These three were measured, not eyeballed. Against the #fbfaf9 canvas the
+   * first draft came in at 3.51 (faint), 4.40 (accent) and 4.18 (verified) --
+   * all under the 4.5 AA floor for body-sized text, and `faint` in particular
+   * carries timestamps and eyebrow labels that people actually read. Darkened
+   * to 4.77 / 4.76 / 4.87. Darkening the accent also lifts the white-on-ember
+   * button label from 4.43 to 4.80, which is why it is not darker still: past
+   * this point the ember turns maroon and stops reading as heat.
+   */
+  --ink: #16161a;
+  --ink-muted: #5b5b66;
+  --ink-faint: #6f6f79;
+
+  --accent: #d0361f;
+  --accent-strong: #b52c19;
+  --accent-soft: rgba(208, 54, 31, 0.09);
+  --accent-dim: #f0c6be;
+  --accent-ink: #fffaf8;
+
+  --verified: #0a7f76;
+  --verified-soft: rgba(10, 127, 118, 0.1);
+
+  --good: #157f4c;
+  --good-soft: rgba(21, 127, 76, 0.1);
+  --warn: #8f5b06;
+  --warn-soft: rgba(143, 91, 6, 0.1);
+  --bad: #c33329;
+  --bad-soft: rgba(195, 51, 41, 0.1);
+  --info: #2b57bd;
+  --info-soft: rgba(43, 87, 189, 0.1);
+
+  --shadow-sm: 0 1px 2px rgba(24, 20, 16, 0.05);
+  --shadow-md: 0 2px 4px rgba(24, 20, 16, 0.04), 0 8px 20px rgba(24, 20, 16, 0.06);
+  --shadow-lg: 0 4px 8px rgba(24, 20, 16, 0.05), 0 20px 48px rgba(24, 20, 16, 0.1);
+
+  --font-sans: var(--font-inter, ui-sans-serif), system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+  --font-mono: var(--font-jetbrains-mono, ui-monospace), "SFMono-Regular", "Cascadia Code", Consolas,
+    monospace;
+
+  /* Legacy aliases -- see the header note. */
+  --bg: var(--canvas);
+  --bg-elevated: var(--surface);
+  --bg-elevated-2: var(--surface-2);
+  --fg: var(--ink);
+  --fg-muted: var(--ink-muted);
+  --fg-faint: var(--ink-faint);
+  --accent-bg: var(--accent-soft);
+  --good-bg: var(--good-soft);
+  --warn-bg: var(--warn-soft);
+  --bad-bg: var(--bad-soft);
+  --radius: 0.625rem;
+  --radius-sm: 0.375rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * Dark -- "graphite". Not black: #0a0a0c holds a 1px border without the
+ * halo pure black gives it, and lets the ember read as heat rather than
+ * as a warning triangle.
+ * ------------------------------------------------------------------ */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #0a0a0c;
+  --surface: #121216;
+  --surface-2: #191a1f;
+  --surface-3: #22232a;
+  --inset: #060608;
+
+  --line: #26262e;
+  --line-soft: #1b1b21;
+  --line-strong: #35363f;
+
+  --ink: #ecedf1;
+  --ink-muted: #9b9ca8;
+  /* Was #6b6c78 — 3.81 on the canvas and 3.60 on a card, both under AA. This
+   * measures 4.85 / 4.58. `faint` is the tier that carries timestamps and
+   * eyebrow labels, so it has to clear the floor even on the raised surface. */
+  --ink-faint: #7c7d88;
 
   --accent: #ff4d3d;
+  --accent-strong: #ff6b5b;
+  --accent-soft: rgba(255, 77, 61, 0.12);
   --accent-dim: #7a2820;
-  --accent-bg: rgba(255, 77, 61, 0.1);
+  --accent-ink: #1a0705;
+
+  --verified: #2fd4c7;
+  --verified-soft: rgba(47, 212, 199, 0.12);
 
   --good: #3ecf6a;
-  --good-bg: rgba(62, 207, 106, 0.12);
+  --good-soft: rgba(62, 207, 106, 0.12);
   --warn: #e8a23d;
-  --warn-bg: rgba(232, 162, 61, 0.12);
+  --warn-soft: rgba(232, 162, 61, 0.12);
   --bad: #ff5a52;
-  --bad-bg: rgba(255, 90, 82, 0.12);
+  --bad-soft: rgba(255, 90, 82, 0.12);
+  --info: #5a96ff;
+  --info-soft: rgba(90, 150, 255, 0.12);
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Consolas, monospace;
-
-  --radius: 8px;
-  --radius-sm: 5px;
+  /* Dark elevation is carried by borders, not drop shadows -- a shadow on a
+   * near-black canvas is invisible at best and a grey smear at worst. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
 }
 
-* {
-  box-sizing: border-box;
+/* ------------------------------------------------------------------ *
+ * Tailwind theme. `inline` keeps the var reference live so the runtime
+ * override above wins; a non-inline @theme would freeze the light value.
+ * ------------------------------------------------------------------ */
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-inset: var(--inset);
+
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+
+  --color-ink: var(--ink);
+  --color-muted: var(--ink-muted);
+  --color-faint: var(--ink-faint);
+
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-dim: var(--accent-dim);
+  --color-accent-ink: var(--accent-ink);
+
+  --color-verified: var(--verified);
+  --color-verified-soft: var(--verified-soft);
+
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  /* Display sizes for the public surfaces. Tight tracking and leading -- these
+   * are set as headlines, not scaled-up body copy. */
+  --text-display-sm: 2rem;
+  --text-display-sm--line-height: 1.1;
+  --text-display-sm--letter-spacing: -0.02em;
+  --text-display-md: 2.75rem;
+  --text-display-md--line-height: 1.05;
+  --text-display-md--letter-spacing: -0.028em;
+  --text-display-lg: 3.75rem;
+  --text-display-lg--line-height: 1;
+  --text-display-lg--letter-spacing: -0.032em;
+  --text-display-xl: 5rem;
+  --text-display-xl--line-height: 0.96;
+  --text-display-xl--letter-spacing: -0.036em;
+
+  /* The eyebrow label above every section. One size, one tracking, everywhere. */
+  --text-eyebrow: 0.6875rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.11em;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
 }
 
-html,
-body {
-  padding: 0;
-  margin: 0;
+/* ------------------------------------------------------------------ base */
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    /* Grid and flex children default to min-content width, which is what makes
+     * a long token or wide table push the page sideways. This is the single
+     * highest-leverage line against accidental horizontal scroll. */
+    min-width: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Anchor targets clear the sticky header instead of hiding behind it. */
+    scroll-padding-top: 5.5rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  html,
+  body {
+    padding: 0;
+    margin: 0;
+  }
+
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Nothing on any page may scroll the body sideways. */
+    overflow-x: hidden;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre,
+  .mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "liga" 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Mouse users never see the ring; keyboard users always do. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+
+  [id] {
+    scroll-margin-top: 5.5rem;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border: 2px solid var(--canvas);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-faint);
+  }
+
+  /*
+   * Reduced motion, honoured globally.
+   *
+   * The blanket override is the floor, not the whole policy: JS-driven motion
+   * additionally checks `usePrefersReducedMotion()` from `lib/motion.ts`,
+   * because a 0.01ms transition still runs the animation frame loop.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
-body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-}
+/* ------------------------------------------------------------------ *
+ * Utilities the token system cannot express as a single property.
+ * ------------------------------------------------------------------ */
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-code,
-.mono {
-  font-family: var(--font-mono);
-}
-
-::selection {
-  background: var(--accent-dim);
-  color: var(--fg);
-}
-
-/* ---------------------------------------------------------------- layout */
-
-.shell {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 0 24px 96px;
-}
-
-.rail {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 12px 24px;
-  background: rgba(10, 10, 11, 0.85);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.rail-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  font-size: 15px;
-  white-space: nowrap;
-}
-
-.rail-brand .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
-}
-
-.rail-nav {
-  display: flex;
-  gap: 4px;
-  font-size: 13px;
-}
-
-.rail-nav a {
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  color: var(--fg-muted);
-}
-
-.rail-nav a:hover {
-  color: var(--fg);
-  background: var(--bg-elevated);
-}
-
-.rail-powered {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--fg-faint);
-  white-space: nowrap;
-}
-
-.rail-powered strong {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.page-head {
-  padding: 32px 0 20px;
-}
-
-.page-head h1 {
-  font-size: 22px;
-  letter-spacing: -0.02em;
-  margin: 0 0 4px;
-}
-
-.page-head p {
-  color: var(--fg-muted);
-  margin: 0;
-  font-size: 13.5px;
-}
-
-.crumb {
-  font-size: 12.5px;
-  color: var(--fg-faint);
-  margin-bottom: 10px;
-}
-
-.crumb a:hover {
-  color: var(--fg-muted);
-}
-
-/* ---------------------------------------------------------------- cards */
-
-.card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 20px;
-}
-
-.card + .card {
-  margin-top: 16px;
-}
-
-.card-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--fg-faint);
-  margin: 0 0 14px;
-  font-weight: 600;
-}
-
-.grid {
-  display: grid;
-  gap: 16px;
-}
-
-/* ---------------------------------------------------------------- badges */
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.badge::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.badge-healthy,
-.badge-resolved {
-  background: var(--good-bg);
-  color: var(--good);
-}
-.badge-degraded,
-.badge-diagnosing,
-.badge-healing,
-.badge-rejected,
-.badge-heal_failed {
-  background: var(--warn-bg);
-  color: var(--warn);
-}
-.badge-broken,
-.badge-detected,
-.badge-escalated {
-  background: var(--bad-bg);
-  color: var(--bad);
-}
-.badge-awaiting_approval,
-.badge-approved,
-.badge-verifying {
-  background: rgba(90, 150, 255, 0.12);
-  color: #5a96ff;
-}
-
-.pill {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 5px;
-  background: var(--bg-elevated-2);
-  border: 1px solid var(--line);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--fg-muted);
-}
-
-.pill-accent {
-  border-color: var(--accent-dim);
-  color: var(--accent);
-  background: var(--accent-bg);
-}
-
-/* ---------------------------------------------------------------- tables */
-
-table.datagrid {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-table.datagrid th {
-  text-align: left;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--fg-faint);
-  font-weight: 600;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--line);
-}
-
-table.datagrid td {
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--line-soft);
-  vertical-align: middle;
-}
-
-table.datagrid tr:last-child td {
-  border-bottom: none;
-}
-
-td.num,
-th.num {
-  text-align: right;
-  font-family: var(--font-mono);
-}
-
-/* ---------------------------------------------------------------- misc */
-
-.muted {
-  color: var(--fg-muted);
-}
-.faint {
-  color: var(--fg-faint);
-}
-.accent-text {
-  color: var(--accent);
-}
-
-.button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid var(--line);
-  background: var(--bg-elevated-2);
-  color: var(--fg);
-  cursor: pointer;
-}
-
-.button:hover {
-  border-color: var(--fg-faint);
-}
-
-.button-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #1a0a08;
-}
-
-.button-primary:hover {
-  filter: brightness(1.08);
-}
-
-.button-danger {
-  background: transparent;
-  border-color: var(--bad);
-  color: var(--bad);
-}
-
-.button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.command-line {
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  padding: 10px 12px;
-  background: #000000;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  color: #d8d8dd;
+/* Every wide thing -- tables, code, the heatmap -- scrolls inside itself. */
+@utility scrollable-x {
   overflow-x: auto;
-  white-space: pre;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
 
-.command-line .prompt {
-  color: var(--accent);
+@utility prose-measure {
+  text-wrap: pretty;
+  max-width: 68ch;
 }
 
-.empty-state {
-  padding: 48px 20px;
-  text-align: center;
-  color: var(--fg-faint);
+/* Hairline grid backdrop for hero and section fills. Two gradients, no image. */
+@utility bg-grid {
+  background-image: linear-gradient(to right, var(--line-soft) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line-soft) 1px, transparent 1px);
+  background-size: 3.5rem 3.5rem;
 }
 
-.sparkline {
-  display: inline-flex;
-  gap: 1px;
-  align-items: flex-end;
-  height: 20px;
-}
+/* ------------------------------------------------------------------ *
+ * Cockpit classes.
+ *
+ * These belong to the existing Fleet / collector / incident / review screens.
+ * They are re-pointed at the semantic tokens here so those screens render
+ * correctly in both themes today; they get rebuilt on the primitives in a
+ * later phase.
+ * ------------------------------------------------------------------ */
 
-.sparkline .bar {
-  width: 4px;
-  border-radius: 1px;
-}
+@layer components {
+  .shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 1.5rem 6rem;
+  }
 
-.heat-cell {
-  width: 34px;
-  height: 24px;
-  border-radius: 3px;
-}
+  .rail {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    /* Wraps rather than pushing the page sideways. The sponsor credit is
+     * `white-space: nowrap` and sits at `margin-left: auto`, which on a 375px
+     * viewport was the one element widening the document. */
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    padding: 0.75rem 1rem;
+    background: color-mix(in oklab, var(--canvas) 85%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line-soft);
+  }
 
-.timeline {
-  position: relative;
-  padding-left: 22px;
-}
+  .rail-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    font-size: 0.9375rem;
+    white-space: nowrap;
+  }
 
-.timeline::before {
-  content: "";
-  position: absolute;
-  left: 5px;
-  top: 4px;
-  bottom: 4px;
-  width: 1px;
-  background: var(--line);
-}
+  .rail-brand .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
 
-.timeline-item {
-  position: relative;
-  padding-bottom: 18px;
-}
+  .rail-nav {
+    display: flex;
+    gap: 0.25rem;
+    font-size: 0.8125rem;
+    /* A fleet of a dozen collectors must scroll the nav, not the page. */
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
 
-.timeline-item::before {
-  content: "";
-  position: absolute;
-  left: -22px;
-  top: 4px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--bg-elevated-2);
-  border: 2px solid var(--fg-faint);
-}
+  .rail-nav::-webkit-scrollbar {
+    display: none;
+  }
 
-.timeline-item.tl-good::before {
-  border-color: var(--good);
-}
-.timeline-item.tl-bad::before {
-  border-color: var(--bad);
-}
-.timeline-item.tl-warn::before {
-  border-color: var(--warn);
-}
+  .rail-nav a {
+    padding: 0.375rem 0.625rem;
+    border-radius: var(--radius-sm);
+    color: var(--ink-muted);
+    transition: color 150ms var(--ease-out-quint), background-color 150ms var(--ease-out-quint);
+  }
 
-.diff-recovered {
-  color: var(--good);
-}
-.diff-broken {
-  color: var(--bad);
+  .rail-nav a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  .rail-powered {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  .rail-powered strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .page-head {
+    padding: 2rem 0 1.25rem;
+  }
+
+  .page-head h1 {
+    font-size: 1.375rem;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.25rem;
+  }
+
+  .page-head p {
+    color: var(--ink-muted);
+    margin: 0;
+    font-size: 0.84375rem;
+  }
+
+  .crumb {
+    font-size: 0.78125rem;
+    color: var(--ink-faint);
+    margin-bottom: 0.625rem;
+  }
+
+  .crumb a:hover {
+    color: var(--ink-muted);
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card + .card {
+    margin-top: 1rem;
+  }
+
+  .card-title {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink-faint);
+    margin: 0 0 0.875rem;
+    font-weight: 600;
+  }
+
+  .grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    padding: 0.1875rem 0.5625rem;
+    border-radius: 999px;
+    font-size: 0.71875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .badge-healthy,
+  .badge-resolved {
+    background: var(--good-soft);
+    color: var(--good);
+  }
+
+  .badge-degraded,
+  .badge-diagnosing,
+  .badge-healing,
+  .badge-rejected,
+  .badge-heal_failed {
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
+
+  .badge-broken,
+  .badge-detected,
+  .badge-escalated {
+    background: var(--bad-soft);
+    color: var(--bad);
+  }
+
+  .badge-awaiting_approval,
+  .badge-approved,
+  .badge-verifying {
+    background: var(--info-soft);
+    color: var(--info);
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+  }
+
+  .pill-accent {
+    border-color: var(--accent-dim);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  table.datagrid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+
+  table.datagrid th {
+    text-align: left;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+    font-weight: 600;
+    padding: 0.5rem 0.625rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  table.datagrid td {
+    padding: 0.5625rem 0.625rem;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: middle;
+  }
+
+  table.datagrid tr:last-child td {
+    border-bottom: none;
+  }
+
+  td.num,
+  th.num {
+    text-align: right;
+    font-family: var(--font-mono);
+  }
+
+  .muted {
+    color: var(--ink-muted);
+  }
+
+  .faint {
+    color: var(--ink-faint);
+  }
+
+  .accent-text {
+    color: var(--accent);
+  }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink);
+    cursor: pointer;
+    transition: border-color 150ms var(--ease-out-quint),
+      background-color 150ms var(--ease-out-quint);
+  }
+
+  .button:hover {
+    border-color: var(--line-strong);
+    background: var(--surface-3);
+  }
+
+  .button-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  .button-primary:hover {
+    background: var(--accent-strong);
+    border-color: var(--accent-strong);
+  }
+
+  .button-danger {
+    background: transparent;
+    border-color: var(--bad);
+    color: var(--bad);
+  }
+
+  .button-danger:hover {
+    background: var(--bad-soft);
+    border-color: var(--bad);
+  }
+
+  .button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .command-line {
+    font-family: var(--font-mono);
+    font-size: 0.78125rem;
+    padding: 0.625rem 0.75rem;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .command-line .prompt {
+    color: var(--accent);
+  }
+
+  .empty-state {
+    padding: 3rem 1.25rem;
+    text-align: center;
+    color: var(--ink-faint);
+  }
+
+  .sparkline {
+    display: inline-flex;
+    gap: 1px;
+    align-items: flex-end;
+    height: 1.25rem;
+  }
+
+  .sparkline .bar {
+    width: 4px;
+    border-radius: 1px;
+  }
+
+  .heat-cell {
+    width: 2.125rem;
+    height: 1.5rem;
+    border-radius: 3px;
+  }
+
+  .timeline {
+    position: relative;
+    padding-left: 1.375rem;
+  }
+
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 4px;
+    bottom: 4px;
+    width: 1px;
+    background: var(--line);
+  }
+
+  .timeline-item {
+    position: relative;
+    padding-bottom: 1.125rem;
+  }
+
+  .timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -1.375rem;
+    top: 4px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 2px solid var(--ink-faint);
+  }
+
+  .timeline-item.tl-good::before {
+    border-color: var(--good);
+  }
+
+  .timeline-item.tl-bad::before {
+    border-color: var(--bad);
+  }
+
+  .timeline-item.tl-warn::before {
+    border-color: var(--warn);
+  }
+
+  .diff-recovered {
+    color: var(--good);
+  }
+
+  .diff-broken {
+    color: var(--bad);
+  }
 }

@@ -5,28 +5,9 @@ import { summariseCredits } from '@molt/brightdata';
 import { Badge } from '@/components/Badge';
 import { getContext } from '@/lib/context';
 import { relativeTime } from '@/lib/format';
-import { buildHeatmap, cellLabel, type Cell, type Heatmap } from '@/lib/heatmap';
+import { buildHeatmap, cellBgClass, cellLabel, type Heatmap } from '@/lib/heatmap';
 
 export const dynamic = 'force-dynamic';
-
-/** Same classification as `cellColor`, expressed as a static Tailwind class so the JIT scanner can find it. */
-function barColorClass(cell: Cell | undefined): string {
-  if (cell === undefined) return 'bg-[var(--line-soft)]';
-  if (cell.kind === 'distorted' && cell.magnitude === 0) return 'bg-[var(--bad)]';
-  switch (cell.kind) {
-    case 'healthy':
-      return 'bg-[var(--good)]';
-    case 'appeared':
-      return 'bg-[#5a96ff]';
-    case 'degraded':
-    case 'distorted':
-    case 'flatlined':
-      return 'bg-[var(--warn)]';
-    case 'collapsed':
-    case 'vanished':
-      return 'bg-[var(--bad)]';
-  }
-}
 
 /**
  * Fleet — one card per collector.
@@ -118,7 +99,7 @@ export default async function FleetPage() {
                         {history.map((cell, i) => (
                           <span
                             key={heatmap.columns[i]?.capturedAt ?? i}
-                            className={`bar ${barColorClass(cell)}`}
+                            className={`bar ${cellBgClass(cell)}`}
                             style={{ height: cell === undefined ? 3 : Math.max(3, cell.rate * 20) }}
                           />
                         ))}

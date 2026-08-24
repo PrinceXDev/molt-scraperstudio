@@ -48,7 +48,10 @@ export function TerminalDrawer() {
   }, []);
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--line)] bg-[rgba(10,10,11,0.92)] backdrop-blur-[10px]">
+    // The background is a token, not a literal: this drawer previously hardcoded
+    // the dark canvas as an rgba() value, which read as a black bar sitting on
+    // the page once a light theme existed.
+    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-canvas/92 backdrop-blur-[10px]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

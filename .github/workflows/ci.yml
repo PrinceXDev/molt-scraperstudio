@@ -1,8 +1,12 @@
 name: ci
 
-# Runs entirely offline against committed fixtures of real Bright Data output.
-# No secrets, no network, no credits — so the green checks mean the logic is
-# sound, not that the weather was good.
+# The test suite runs entirely offline against committed fixtures of real Bright
+# Data output. No secrets, no network, no credits — so the green checks mean the
+# logic is sound, not that the weather was good.
+#
+# The one exception is the web build, which fetches its two fonts at build time
+# and self-hosts them. That is a build-time dependency, not a test-time one: the
+# offline claim the last step asserts is about the suite, and it still holds.
 
 on:
   push:
@@ -39,6 +43,15 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Build the web app
+        # `pnpm build` covers packages only, so until now nothing in CI ever ran
+        # `next build` — a web-only break (a bad import, a type error behind a
+        # route boundary, a Tailwind at-rule the compiler rejects) could reach
+        # main with every check green.
+        env:
+          MOLT_DATABASE_URL: ':memory:'
+        run: pnpm --filter @molt/web build
 
       - name: Assert the suite needs no credentials
         # The claim is that a judge can clone this and verify the detection logic
