@@ -1,0 +1,73 @@
+---
+title: Onboarding a target
+description: molt add preflights a target before spending a create call on it.
+---
+
+```bash
+molt add <url> "<description>" [--name <name>] [--canary <url>] [--force]
+```
+
+`molt add` is the only supported way to onboard a new collector at runtime. It exists because
+`scraper create` failures are expensive in a way most CLI failures are not: a failed attempt leaves an
+**orphaned collector that cannot be deleted programmatically** — someone has to remove it from the
+dashboard by hand. `add` preflights every lesson that was learned by burning a collector, so the
+common failure modes are caught before the AI-Flow job even starts.
+
+## What preflight checks
+
+```bash
+molt add https://example.com/products "product listing with price and stock"
+```
+
+```text
+Preflighting target
+  target   https://example.com/products
+  size     44 KB within the ~200 KB ceiling
+  robots   path permitted
+  links    3 internal, 0 id anchors
+```
+
+<Constraint>
+**Size.** The intent analyser fails outright on large documents — a real 1.63 MB page killed two
+`create` attempts at the first pipeline step before this ceiling existed. `preflightTarget` measures
+the actual response and refuses above roughly 200 KB unless you pass `--force`.
+</Constraint>
+
+<Constraint>
+**Robots.** A target whose `robots.txt` disallows the path is not a target. Found-but-disallowed is a
+hard stop; no `robots.txt` at all is only noted, not blocked.
+</Constraint>
+
+<Note>
+**Link graph.** A page with internal navigation or many `id` anchors tends to make the generator build
+a crawler instead of a single-page extractor — worth knowing before you commit to it, which is why
+this is a warning rather than a blocker.
+</Note>
+
+## Flags
+
+| Flag | Effect |
+| --- | --- |
+| `--name <name>` | A friendly alias for the collector, independent of its generated ID. |
+| `--canary <url>` | A second URL checked alongside the main target, for collectors that should track two pages. |
+| `--force` | Proceed past a blocker (size or robots) anyway. Use deliberately, not by habit. |
+
+## The 500-character description cap
+
+`bdata scraper create`'s description argument is capped at 500 characters, and `molt add` enforces the
+same limit before ever calling it — a rejected call after the preflight has already run is a wasted
+round trip.
+
+## What happens after preflight passes
+
+Generation proceeds through Scraper Studio's full pipeline: `scraper create` (an AI-Flow job — expect
+five to twenty-five minutes), then an initial `run` to establish the baseline snapshot. The new
+collector is registered exactly like `primary` and `chaos`, and `molt check <its-id-or-name>` works on
+it immediately afterward.
+
+<Warning>
+`create` and `heal` share the same **concurrent-job cap** and return a `429` if one is already in
+flight. Molt serialises them through a single slot — see
+[Bright Data integration](/docs/bright-data-integration) — so `molt add` will wait rather than fail if
+something else is mid-heal.
+</Warning>

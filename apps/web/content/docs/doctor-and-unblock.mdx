@@ -1,0 +1,65 @@
+---
+title: doctor & unblock
+description: Preflight your own environment, and clear a heal that is blocking new work.
+---
+
+## molt doctor
+
+```bash
+molt doctor
+```
+
+Checks the things that fail in ways that look like a Molt bug but are not: a wrong Node version, an
+unreachable database, an unresolvable Bright Data CLI, no credential in the environment, no collectors
+registered — and then reuses the exact same preflight `molt add` runs against every already-registered
+target, to catch drift since it was onboarded (a target that stopped resolving, started disallowing
+robots, or grew past the size ceiling).
+
+```text
+Doctor
+  ✓  Node.js version           v22.11.0
+  ✓  Database                  reachable
+  ✓  Bright Data CLI           node_modules/@brightdata/cli/dist/index.js
+  ⚠  Bright Data credential    not set in env — fine if `bdata login` has already run
+  ✓  Collectors registered     2 registered
+
+  Targets
+  ✓  chaos    https://molt-chaos.vercel.app
+  ✓  primary  https://www.postgresql.org/support/security/
+```
+
+A missing credential is a warning, not a failure — `bdata login` can store it outside the process
+environment, somewhere this check has no visibility into either way.
+
+## molt unblock
+
+```bash
+molt unblock [primary|chaos|c_*]
+```
+
+Scraper Studio allows **one refactor job per collector at a time**. A heal left sitting at
+`awaiting_approval` holds that slot, so every subsequent heal on the same collector gets refused with a
+`409` until someone decides. `unblock` is that decision made for you: it rejects whatever heal is
+currently pending.
+
+<Warning>
+This discards any fix you were part-way through reviewing. Read [Heal & review](/docs/heal-and-review)
+first if there is a pending heal you have not actually looked at yet — `unblock` is for a stuck heal
+you have already decided against, not a shortcut past the review step.
+</Warning>
+
+```bash
+molt unblock chaos
+```
+
+```text
+Clearing pending heal on chaos
+  collector  c_mt101cvbc0o34ghzh
+
+  This rejects whatever heal is currently awaiting approval on this
+  collector. Any fix you were part-way through reviewing is discarded.
+
+$ bdata scraper reject c_mt101cvbc0o34ghzh                   842 ms, exit 0
+
+  Cleared. A new heal can now start. Run: molt watch
+```

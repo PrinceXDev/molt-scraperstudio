@@ -40,6 +40,17 @@ function collectRoutes(dir: string, urlPath = ''): string[] {
     // Dynamic and private segments are not static destinations.
     if (entry.startsWith('_') || entry.startsWith('@') || entry === 'api') continue;
 
+    // An optional catch-all (`[[...slug]]`) additionally serves its *parent*
+    // path with no segment at all — `/docs` itself is this shape. A plain
+    // catch-all (`[...slug]`) requires at least one segment and does not get
+    // that extra route. Without this, a nav item pointing at the bare parent
+    // path (`/docs`) would wrongly report as missing, because the only
+    // `page.tsx` on disk sits one directory deeper, inside the bracketed one.
+    if (/^\[\[\.\.\..+\]\]$/.test(entry) && statSync(full).isDirectory()) {
+      const hasPage = readdirSync(full).includes('page.tsx');
+      if (hasPage) routes.push(urlPath === '' ? '/' : urlPath);
+    }
+
     routes.push(...collectRoutes(full, isGroup ? urlPath : `${urlPath}/${entry}`));
   }
 

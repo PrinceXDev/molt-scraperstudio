@@ -1,0 +1,69 @@
+---
+title: Architecture
+description: Five packages, one dependency rule, and why the pure detection core has no idea Bright Data exists.
+---
+
+## The dependency rule
+
+```text
+apps/web, apps/sentinel
+        │
+        ▼
+packages/core ──▶ packages/diagnose ──▶ packages/health
+        │                                    ▲
+        ▼                                    │
+packages/brightdata ────────────────────────┘
+        │
+        ▼
+packages/store
+```
+
+Both apps depend on all five packages; the packages themselves only depend downward. The rule that
+actually matters is narrower than the diagram: **`packages/health` is pure.** No imports from
+`node:*`, no network, no filesystem, no clock, no randomness. If a function needs the time, it takes a
+timestamp as a parameter instead of calling one.
+
+<Constraint>
+This is not a style preference — it is what makes `pnpm test` provable in thirty seconds with no
+Bright Data account. The detection core's fixtures are real recorded output, and comparing two
+snapshots always produces the same verdict, so the rules can be pinned and verified offline instead of
+re-verified against a live website every time someone touches them.
+</Constraint>
+
+## The five packages
+
+**`packages/health`** — drift detection. `buildSnapshot`, `compareSnapshots`, `classifyField`. See
+[Concepts](/docs/concepts) for the finding kinds this produces.
+
+**`packages/store`** — libSQL/SQLite persistence via `Repository`, explicit SQL, no migrations. Both
+the CLI and the web cockpit open the *same* database file, so an approve click in the browser and
+`molt approve` in a terminal are reading and writing the same rows.
+
+**`packages/brightdata`** — the only I/O boundary to Bright Data. Mutations through the real CLI,
+telemetry through REST, credentials redacted before storage. Full detail in
+[Bright Data integration](/docs/bright-data-integration).
+
+**`packages/diagnose`** — evidence becomes a prompt. `diagnose()` turns a `HealthReport` into the heal
+prompt `bdata scraper heal` receives, capped at 1000 characters. Pure and deterministic — no network,
+no clock, no model call of its own.
+
+**`packages/core`** — the incident state machine and the `Engine` that drives it, plus `CliScraper`
+(the concrete `ScraperPort` that actually spawns `bdata`) and `SerialQueue` (the single-slot limiter
+for AI-Flow jobs). See [Incident states](/docs/incident-states) for the state machine itself.
+
+## The two apps
+
+**`apps/sentinel`** is the `molt` CLI and the primary interface — every command in
+[CLI reference](/docs/cli-reference) lives here.
+
+**`apps/web`** is the cockpit: this documentation site, the public landing page, and the Fleet /
+collector / incident / review screens under `/fleet`. It renders only what a terminal genuinely
+cannot — a twenty-row, twelve-field before/after data diff is the reason the Heal Review screen exists
+at all.
+
+## The chaos target
+
+`apps/chaos` is a small, deliberately breakable site deployed publicly (Bright Data's cloud cannot
+reach `localhost`, so a demo target has to be a real public URL). Its layout can be redeployed between
+versions — a healthy baseline and a version with two fields zeroed — which is what makes end-to-end
+healing reproducible on demand rather than waiting for a real site to break on its own schedule.

@@ -1,0 +1,65 @@
+---
+title: Decision log
+description: Sixteen decisions this project made under pressure, and what each one cost to learn.
+---
+
+The full internal log lives at
+[`docs/DECISIONS.md`](https://github.com/PrinceXDev/molt-scraperstudio/blob/main/docs/DECISIONS.md) —
+dated entries, written at the moment each decision was made rather than reconstructed afterward. This
+page is the externally-readable summary: what was decided, and why, without the blow-by-blow.
+
+## Target selection
+
+**Primary target moved from Tailscale's changelog to PostgreSQL's security advisories.** The original
+pick failed twice: the page was 1.63 MB, and the intent analyser cannot ingest documents anywhere near
+that size. The replacement is 67 KB — roughly 25× smaller — and carries 327 CVE advisories across 70
+rows from one page load. This single failure is the reason [Onboarding a target](/docs/onboarding-targets)
+preflights size before ever calling `create`.
+
+**The chaos site changes by redeploy, not by a query parameter.** A layout switch driven by
+`?v=2` would let anyone flip the site back to healthy mid-demo by editing a URL — the deploy itself has
+to be the only way the site's shape changes, or a "self-healing" demonstration is not actually proving
+anything.
+
+**The chaos site must have no outbound navigation, and deploy scripts must verify the alias actually
+moved.** Two guardrails earned by two separate near-misses: an internal link the collector could wander
+off into, and a deploy that reported success while an old alias silently kept serving stale content.
+
+## What the detection core got right — and what it got wrong once
+
+**A field zeroed out is broken, not degraded.** The `distorted` classification (see
+[Concepts](/docs/concepts#drift)) exists because a field returning `0` instead of its real value fills
+on every row — indistinguishable from healthy by presence alone. Not obvious in advance; costly to
+miss.
+
+**Recovery must be the negation of the fault, at the same threshold that opened the incident** — not
+"some data came back." An approved heal that returns non-null values but does not actually clear the
+original fault is not a resolution, and `molt approve`'s verify step is built to say so.
+
+**The web UI's Fleet page showed a false-green fill rate for a zeroed field.** The exact bug the
+detection core exists to catch, reproduced by the dashboard meant to display it — because an early
+version coloured cells by raw fill rate rather than by classification. Covered in more detail on
+[Honest limits](/docs/honest-limits).
+
+## Failures that were fixed, not hidden
+
+**`resolveCliEntry` broke under webpack; the web UI's Approve button did nothing.** A resolution path
+that worked from a plain Node process silently failed once bundled — the button did not error, it just
+had no effect, which is a worse failure mode than a crash. Caught by the same verification step
+described next.
+
+**Verification caught a bug in Molt's own `approve` call**, and **self-healing was verified end to end
+on real infrastructure** rather than only against fixtures — both entries exist because a mocked
+integration test would have passed while the real command silently failed.
+
+**One refactor job per collector — a `409` that must not be retried.** Scraper Studio refuses a second
+heal while one is already pending; retrying blindly just repeats the refusal. This is why
+[`molt unblock`](/docs/doctor-and-unblock) exists as an explicit human decision rather than an
+automatic retry.
+
+## Infrastructure
+
+**SQLite over Postgres**, and **per-entry `id` anchors are also a discovery surface** — a smaller
+decision about the chaos target's own markup, made because Molt's own link-graph preflight (see
+[Onboarding a target](/docs/onboarding-targets)) treats bare anchor ids as addressable pages, so the
+demo target's own HTML had to be written with that in mind.

@@ -1,0 +1,71 @@
+---
+title: Incident states
+description: The ten-state machine every incident moves through, and every transition between them.
+---
+
+`packages/core`'s `transition` function is a pure `switch` over `(state, trigger)` with no `default`
+branch — adding a state or a trigger is a compile error everywhere it must be handled, so this page
+cannot drift from the code the way a hand-maintained diagram usually does.
+
+## The states
+
+| State | Meaning |
+| --- | --- |
+| `detected` | Drift measured, incident opened, nothing attempted yet. |
+| `diagnosing` | Composing the heal prompt from the evidence. |
+| `healing` | `bdata scraper heal` is in flight. |
+| `awaiting_approval` | Heal stopped at the approval gate; a preview is available to review. |
+| `approved` | A decision was recorded; the fix is committed. |
+| `verifying` | Re-running to find out whether the fix actually worked. |
+| `resolved` | Fill rates recovered. The only success state. |
+| `rejected` | The proposed fix was declined. |
+| `heal_failed` | The heal call itself failed, as distinct from producing a bad fix. |
+| `escalated` | Retries exhausted, or a verify proved the fix did not work. A human is needed. |
+
+`resolved` and `escalated` are **terminal** — no trigger moves an incident out of either one.
+`detected`, `rejected`, and `heal_failed` are the three states diagnosis can restart from.
+
+## The transitions
+
+```text
+detected → diagnosing → healing → awaiting_approval → approved → verifying → resolved
+                            │              │                          │
+                            │              └── rejected ──┐           │
+                            └── heal_failed ──────────────┤           │
+                                                          ↓           │
+                                              diagnosing (retry) ←────┘
+                                                          │
+                                              escalated ←─┘ (attempts spent)
+```
+
+Retries are bounded at **2 attempts**, counted at the moment a heal *starts* rather than when it
+completes — so a heal that crashes still consumes an attempt and cannot loop forever. An unbounded
+heal loop is a credit incinerator; every path that could retry checks the counter first and escalates
+once it is spent.
+
+## Two edges worth knowing about
+
+**A collector observed healthy always wins.** `observed.healthy` resolves an incident from *any*
+non-terminal state, checked before every other trigger. If the target site was rolled back or the
+breakage was transient, the incident closes the moment a check proves it, regardless of what stage the
+heal was at.
+
+**A heal can skip the gate entirely.** If Bright Data's own heal response does not report a gate
+(`isGate(envelope.status)` is false), the incident advances straight from `healing` to `approved` —
+the `heal.done` trigger, distinct from the far more common `heal.gate`. This is a property of the
+platform's response for that particular heal, not a setting Molt exposes; every heal Molt has actually
+observed in this repository's fixtures and live runs has gated, which is why
+[Heal & review](/docs/heal-and-review) describes the gate as the normal path.
+
+<Constraint>
+There is no flag in this CLI that skips `awaiting_approval` on purpose. If you have read that one
+exists somewhere, it does not — check [CLI reference](/docs/cli-reference) for the full, current
+command surface.
+</Constraint>
+
+## A rejection is not a failure
+
+`approve.rejected` returns the incident to the diagnosable set (via `rejected`) rather than closing it
+— a human rejecting a fix is a judgement about *that attempt*, not a verdict that the incident is
+unfixable. `molt watch` will diagnose again with a sharper prompt, informed by why the previous
+attempt was rejected.

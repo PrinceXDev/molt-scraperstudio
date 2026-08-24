@@ -1,0 +1,86 @@
+---
+title: Quickstart
+description: Verify the detection logic offline in thirty seconds, then drive a live collector.
+---
+
+Molt has two separate on-ramps, and they are worth telling apart before you start.
+
+The first needs no credentials and proves the detection logic is sound. The second drives a real
+collector against Bright Data Scraper Studio and costs credits. Most people should do the first one
+first.
+
+## Verify the logic, no account needed
+
+```bash
+pnpm install
+pnpm test
+```
+
+This runs the full suite offline against committed fixtures of **real** Bright Data output —
+including the drift-detection core, the heal-prompt generator, and the whole incident state machine.
+Nothing here touches the network or reads an API key.
+
+<Note>
+CI runs this exact command twice: once normally, and once with every credential blanked
+(`BRIGHTDATA_API_KEY=''`). The second run exists to prove the claim above is actually true, not just
+stated.
+</Note>
+
+## Drive a live collector
+
+```bash
+npx -p @brightdata/cli bdata login
+```
+
+```bash
+cp .env.example .env
+```
+
+Paste your collector IDs into `.env`, then:
+
+```bash
+pnpm molt init
+```
+
+```bash
+pnpm molt check primary
+```
+
+`molt init` registers the collectors your `.env` points at. `molt check` runs one of them through the
+real Bright Data CLI, snapshots the result, and compares it to whatever baseline exists.
+
+<Warning>
+`check`, `watch`, `approve`, and `add` all shell out to the real `bdata` CLI and can spend credits or
+take minutes to return — `heal` and `create` in particular are AI-Flow jobs. See
+[Honest limits](/docs/honest-limits) before running them against an account you care about.
+</Warning>
+
+## The shape of a session
+
+```bash
+pnpm molt check chaos
+```
+
+```bash
+pnpm molt watch
+```
+
+```bash
+pnpm molt review
+```
+
+```bash
+pnpm molt approve
+```
+
+Check for drift, advance whatever incident that opens as far as it can go automatically, review the
+proposed fix as a human, then approve it — which also re-runs the collector to verify the fix actually
+worked. [Heal & review](/docs/heal-and-review) walks through what happens at each of those four steps
+and why the third one cannot be automated away.
+
+## Where to go next
+
+- [Concepts](/docs/concepts) — snapshot, baseline, drift, incident: the five nouns everything else is
+  built from.
+- [`molt check`](/docs/check) — what one run actually does, and how a verdict is produced.
+- [CLI reference](/docs/cli-reference) — every command, in one table.

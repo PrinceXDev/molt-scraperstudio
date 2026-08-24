@@ -1,0 +1,53 @@
+---
+title: Honest limits
+description: A reliability tool that hides its own limits is not a reliability tool. Here are Molt's, stated plainly.
+---
+
+## Credit figures are estimates
+
+Bright Data publishes no per-operation price list. Every credit number anywhere in Molt — the CLI, the
+cockpit, an incident's cost-of-silence line — is a weighted estimate for *relative* usage, not a bill.
+See [Credits](/docs/credits) for exactly how the weights are derived.
+
+## Healing is slow and capacity-limited
+
+`create` and `heal` are AI-Flow jobs: five to twenty-five minutes each, behind a concurrent-job cap
+that returns `429` if two collide. Molt serialises them through a single slot rather than pretending
+otherwise — see [Bright Data integration](/docs/bright-data-integration).
+
+## Targets must stay small
+
+The intent analyser fails outright on large documents. A real 1.63 MB page killed two `scraper create`
+attempts at the very first pipeline step, and each failed attempt left an **orphaned collector that
+cannot be deleted programmatically** — someone has to remove it from the dashboard by hand. `molt add`
+measures a target's actual response size before ever calling `create`, and refuses above roughly
+200 KB unless overridden with `--force`.
+
+## Bright Data cannot reach your laptop
+
+Collectors run in Bright Data's cloud. A target on `localhost` is not a target — which is the whole
+reason this project's demo target, `apps/chaos`, is deployed publicly rather than run locally.
+
+## A small preview cannot prove a magnitude changed correctly
+
+When a heal returns two preview rows against a sixty-row baseline, comparing raw counts would be
+comparing apples to a much smaller pile of apples. [Heal & review](/docs/heal-and-review#the-human-gate)
+covers what Molt says instead: that the sample is too small to compare *sizes*, while still standing
+behind what it can prove — a zeroed field is no longer zero.
+
+<Constraint>
+**The false-green this project exists to catch, caught itself once.** Early in the web cockpit's
+build, the Fleet page coloured a cell by raw fill rate. A field returning `0` instead of its real
+value still fills on every row, so it read 100% and rendered green — the exact failure Molt is built
+to detect, reproduced by its own dashboard. The fix was to classify every cell through the same
+`compareSnapshots` logic that drives incidents, never by fill rate alone; see
+[Concepts](/docs/concepts#drift) for the `distorted` classification that makes this the correct
+reading today.
+</Constraint>
+
+## A verdict is only as good as the comparison it is made against
+
+Every drift check compares two snapshots. If the baseline itself was captured from a broken run —
+pinned by mistake, or inherited from a bad first check — every later comparison inherits that mistake
+silently. [Baselines](/docs/baselines) covers the two commands that exist specifically to correct this
+by hand: nothing in the engine moves a baseline on its own.

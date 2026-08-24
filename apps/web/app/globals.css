@@ -774,3 +774,29 @@
     color: var(--bad);
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Docs code blocks.
+ *
+ * `lib/mdx.ts` configures rehype-pretty-code with a *pair* of Shiki themes
+ * (`{ light: 'github-light', dark: 'github-dark-dimmed' }`). In that mode Shiki
+ * does not pick a colour itself -- each token span gets both candidates as
+ * inline custom properties (`--shiki-light` / `--shiki-dark`) and leaves the
+ * actual `color` undecided, on the documented assumption that the page's own
+ * CSS makes the call. This is that other half: default to the light value,
+ * override to the dark one under `[data-theme="dark"]`, matching the same
+ * attribute switch every other token in `globals.css` responds to.
+ *
+ * Selected by `code[data-theme]` -- the attribute rehype-pretty-code stamps on
+ * every block it processes -- rather than by a class on the wrapping
+ * `<figure>`, so this holds regardless of how `components/docs/mdx-components`
+ * chooses to wrap the block.
+ * ------------------------------------------------------------------ */
+
+pre code[data-theme] span {
+  color: var(--shiki-light);
+}
+
+[data-theme="dark"] pre code[data-theme] span {
+  color: var(--shiki-dark);
+}

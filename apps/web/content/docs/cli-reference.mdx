@@ -1,0 +1,51 @@
+---
+title: CLI reference
+description: Every molt command, its arguments, and its exit codes, in one table.
+---
+
+`molt --help` always reflects the running binary more exactly than any document can; treat this page
+as the map, not the manual page.
+
+## Commands
+
+| Command | Arguments | What it does |
+| --- | --- | --- |
+| `molt init` | | Register the collectors configured in `.env`. |
+| `molt doctor` | | Preflight the environment — see [doctor & unblock](/docs/doctor-and-unblock). |
+| `molt add` | `<url> <description…> [--name] [--canary] [--force]` | Preflight, generate, and baseline a new collector — see [Onboarding a target](/docs/onboarding-targets). |
+| `molt check` | `[primary\|chaos\|c_*]` | Run a collector and report on its health — see [molt check](/docs/check). |
+| `molt status` | | Fleet overview: every collector, its latest verdict, its open incident. |
+| `molt credits` | `[collector]` | Estimated credit spend, fleet-wide or per collector — see [Credits](/docs/credits). |
+| `molt watch` | | Advance every open incident as far as it can go — see [molt watch](/docs/watch). |
+| `molt review` | `[incident]` | Inspect a proposed fix before committing it. Defaults to the oldest incident awaiting approval. |
+| `molt approve` | `[incident]` | Commit the fix, then verify it worked — see [Heal & review](/docs/heal-and-review). |
+| `molt reject` | `[incident]` | Decline the fix; `molt watch` tries again with a sharper prompt. |
+| `molt unblock` | `[collector]` | Reject a pending heal that is blocking new ones. |
+| `molt baseline` | `<show\|set\|reset> [collector] [snapshotId]` | Manage what "healthy" means — see [Baselines](/docs/baselines). |
+| `molt log` | `[n]` | Transcript of the last `n` `bdata` commands Molt has run (default a small recent window). |
+
+Where `[collector]` or `[incident]` is optional, omitting it resolves to the most relevant one —
+usually the single open incident, or `primary`/`chaos` if only one is configured.
+
+## Exit codes
+
+| Exit | Meaning |
+| --- | --- |
+| `0` | OK. |
+| `1` | Usage error, or an explicit failure (unknown collector, invalid state for the requested decision). |
+| `2` | The collector `check` just ran is broken. |
+| `3` | At least one incident is `awaiting_approval` after `molt watch`. |
+
+These are CI-shaped on purpose: a pipeline can gate on `check` without parsing any output, just the
+exit code.
+
+## Verified size constraints
+
+| Constraint | Limit |
+| --- | --- |
+| `scraper create` description | 500 characters |
+| `scraper heal` prompt | 1000 characters |
+| Target page size (preflight ceiling) | ~200 KB |
+
+All three are enforced in code, not just documented — `molt add` and the heal-prompt generator both
+reject input before it would fail against the real API.
