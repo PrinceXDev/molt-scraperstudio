@@ -25,10 +25,10 @@ export async function approveIncident(incidentId: string): Promise<DecideResult>
   await engine.decide(incidentId, 'approve');
   const verified = await engine.advanceUntilBlocked(incidentId);
 
-  revalidatePath(`/i/${incidentId}`);
-  revalidatePath(`/i/${incidentId}/review`);
-  revalidatePath(`/c/${verified.collectorId}`);
-  revalidatePath('/');
+  revalidatePath(`/fleet/i/${incidentId}`);
+  revalidatePath(`/fleet/i/${incidentId}/review`);
+  revalidatePath(`/fleet/c/${verified.collectorId}`);
+  revalidatePath('/fleet');
 
   return { state: verified.state, resolved: verified.state === 'resolved' };
 }
@@ -38,9 +38,9 @@ export async function rejectIncident(incidentId: string): Promise<DecideResult> 
 
   const rejected = await engine.decide(incidentId, 'reject');
 
-  revalidatePath(`/i/${incidentId}`);
-  revalidatePath(`/i/${incidentId}/review`);
-  revalidatePath('/');
+  revalidatePath(`/fleet/i/${incidentId}`);
+  revalidatePath(`/fleet/i/${incidentId}/review`);
+  revalidatePath('/fleet');
 
   return { state: rejected.state, resolved: false };
 }

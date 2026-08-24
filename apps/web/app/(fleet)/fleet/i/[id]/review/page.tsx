@@ -62,9 +62,11 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
   return (
     <>
       <div className="crumb">
-        <Link href="/">Fleet</Link> /{' '}
-        <Link href={`/c/${incident.collectorId}`}>{collector?.name ?? incident.collectorId}</Link> /{' '}
-        <Link href={`/i/${incident.id}`}>incident</Link> / review
+        <Link href="/fleet">Fleet</Link> /{' '}
+        <Link href={`/fleet/c/${incident.collectorId}`}>
+          {collector?.name ?? incident.collectorId}
+        </Link>{' '}
+        / <Link href={`/fleet/i/${incident.id}`}>incident</Link> / review
       </div>
 
       <div className="page-head flex items-end justify-between">
@@ -83,7 +85,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
           <p className="muted">
             This incident is <Badge value={incident.state} /> — nothing is currently awaiting a
             decision.{' '}
-            <Link href={`/i/${incident.id}`} className="accent-text">
+            <Link href={`/fleet/i/${incident.id}`} className="accent-text">
               View the incident →
             </Link>
           </p>

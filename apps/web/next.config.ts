@@ -26,6 +26,23 @@ const config: NextConfig = {
   ],
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: false },
+  /**
+   * The cockpit moved from `/` to `/fleet` so the public landing page could take
+   * the front door. These keep every link that was ever shared — including the
+   * ones the CLI prints after a `molt check` — working.
+   *
+   * Permanent, because the move is not coming back: a 308 lets browsers and
+   * crawlers stop asking.
+   */
+  redirects: async () => [
+    // Browsers probe `/favicon.ico` regardless of the `<link rel="icon">` tag,
+    // and the icon here is generated at `/icon` rather than committed as a
+    // binary — so without this every page load logs a 404.
+    { source: '/favicon.ico', destination: '/icon', permanent: false },
+    { source: '/c/:id', destination: '/fleet/c/:id', permanent: true },
+    { source: '/i/:id', destination: '/fleet/i/:id', permanent: true },
+    { source: '/i/:id/review', destination: '/fleet/i/:id/review', permanent: true },
+  ],
   // libsql loads a native binary via a dynamic require() that webpack cannot
   // statically resolve, so it falls back to bundling the whole directory —
   // README, LICENSE and all — and chokes on the non-JS files. This only ever

@@ -244,8 +244,6 @@
 
   html {
     scroll-behavior: smooth;
-    /* Anchor targets clear the sticky header instead of hiding behind it. */
-    scroll-padding-top: 5.5rem;
     -webkit-text-size-adjust: 100%;
   }
 
@@ -304,6 +302,15 @@
     color: var(--ink);
   }
 
+  /*
+   * Anchor targets clear the sticky header instead of hiding behind it.
+   *
+   * This is the *only* offset mechanism in play, deliberately. `html` also
+   * carried `scroll-padding-top: 5.5rem` at one point and the two stacked: an
+   * anchor landed 176px down the viewport behind a 64px header, leaving an
+   * obvious dead band above every heading you jumped to. One of them has to go,
+   * and this is the more targeted of the two.
+   */
   [id] {
     scroll-margin-top: 5.5rem;
   }

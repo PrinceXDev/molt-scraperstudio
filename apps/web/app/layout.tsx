@@ -1,12 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import Link from 'next/link';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
-import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { TerminalDrawer } from '@/components/TerminalDrawer';
-import { getContext } from '@/lib/context';
+import { SITE, siteOrigin } from '@/lib/site';
 import { THEME_CANVAS, THEME_INIT_SCRIPT } from '@/lib/theme';
 
 import './globals.css';
@@ -17,8 +14,7 @@ import './globals.css';
  * `next/font/google` downloads these at build time and serves them from our own
  * origin, so there is no runtime request to Google and no third-party font
  * connection at all. This does mean the build now needs network access on a cold
- * cache -- a deliberate trade for a real type system, and the reason
- * `globals.css` no longer claims the app fetches nothing at build time.
+ * cache -- a deliberate trade for a real type system.
  *
  * `display: 'swap'` with the fallback stacks declared in `globals.css`: text is
  * readable from the first paint, and the swap is imperceptible because the
@@ -37,9 +33,18 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Molt — Scraper Reliability Engineering',
-  description:
-    'Detects silent breakage in Bright Data Scraper Studio collectors, heals it, and verifies the fix before closing the incident.',
+  metadataBase: siteOrigin(),
+  // A template, so every page below contributes only its own name.
+  title: { default: `${SITE.name} — ${SITE.tagline}`, template: `%s — ${SITE.name}` },
+  description: SITE.description,
+  applicationName: SITE.name,
+  openGraph: {
+    type: 'website',
+    siteName: SITE.name,
+    title: `${SITE.name} — ${SITE.tagline}`,
+    description: SITE.description,
+  },
+  twitter: { card: 'summary_large_image' },
 };
 
 export const viewport: Viewport = {
@@ -51,37 +56,17 @@ export const viewport: Viewport = {
   ],
 };
 
-async function Rail() {
-  const { repo } = await getContext();
-  const collectors = await repo.listCollectors();
-
-  return (
-    <div className="rail">
-      <div className="rail-brand">
-        <span className="dot" />
-        Molt
-      </div>
-      <nav className="rail-nav">
-        <Link href="/">Fleet</Link>
-        {collectors.map((c) => (
-          <Link key={c.id} href={`/c/${c.id}`}>
-            {c.kind}
-          </Link>
-        ))}
-      </nav>
-      <div className="rail-powered">
-        <ThemeToggle />
-        {/* The sponsor credit is the first thing to go on a narrow screen: it is
-         * the least actionable element in the rail, and it also gets a permanent
-         * home in the public footer. The theme control stays at every width. */}
-        <span className="hidden sm:inline">
-          Powered by <strong>Bright Data Scraper Studio</strong>
-        </span>
-      </div>
-    </div>
-  );
-}
-
+/**
+ * The root layout owns the document and nothing else.
+ *
+ * There are two shells below it and they share no chrome: `(site)` is the public
+ * surface (header, footer, prose measure) and `(fleet)` is the cockpit (rail,
+ * terminal drawer, data grids). Keeping the split at the route-group level means
+ * the landing page does not carry the cockpit's DB query and the cockpit does not
+ * carry the marketing header -- which is exactly what went wrong when the rail
+ * lived here and every page, including future static ones, inherited a
+ * `listCollectors()` call.
+ */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // `suppressHydrationWarning` is required here and is not a papering-over.
@@ -109,11 +94,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
-        <ThemeProvider>
-          <Rail />
-          <main className="shell pb-[140px]">{children}</main>
-          <TerminalDrawer />
-        </ThemeProvider>
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );
