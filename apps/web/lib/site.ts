@@ -61,7 +61,7 @@ export interface NavItem {
 export const NAV: readonly NavItem[] = [
   { label: 'How it works', href: '/#how' },
   { label: 'Docs', href: '/docs' },
-  { label: 'Playground', href: '/playground', soon: true },
+  { label: 'Playground', href: '/playground' },
   { label: 'GitHub', href: SITE.repository, external: true },
 ] as const;
 
