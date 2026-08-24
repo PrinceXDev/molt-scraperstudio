@@ -57,6 +57,31 @@ inside a heal prompt.
 - `.env` is gitignored. Never commit a key, never paste one into a fixture.
 - Tests must pass offline with no API key: `pnpm test`.
 
+## The web design system (`apps/web`)
+
+Read the header comment in [apps/web/app/globals.css](apps/web/app/globals.css) before changing
+anything visual — it carries the full rationale. The short version:
+
+- **Two authored themes**, light and dark, switched by `data-theme` on `<html>`. Tokens are declared
+  on `:root` / `[data-theme="dark"]` and mapped into Tailwind by `@theme inline`, so JSX writes
+  `bg-surface text-muted border-line`, **not** `bg-[var(--bg-elevated)]`. The old `--bg` / `--fg-muted`
+  spellings survive as aliases only until the cockpit screens are rebuilt.
+- **Colour has meaning.** `good / warn / bad / info` are health verdicts and are never decorative.
+  `accent` (the ember) marks primary action and live state — at most one per view.
+- **Contrast is a test**, not a memory: `apps/web/test/contrast.test.ts` asserts every token pair
+  clears WCAG AA in both themes, reading the real CSS. If you change a hex value, run `pnpm test`.
+- **Theme flash** is prevented by a blocking inline script whose source is `THEME_INIT_SCRIPT` in
+  `apps/web/lib/theme.ts`. `<html>` carries `suppressHydrationWarning` for exactly this reason.
+- **Cell classification lives in one place**: `cellSeverity` / `cellBgClass` / `cellClasses` in
+  `apps/web/lib/heatmap.ts`. Do not re-derive it in a page. A `distorted` field with
+  `magnitude === 0` is `bad`, labelled `ZEROED` — see `docs/DECISIONS.md`.
+- **Motion** goes through `apps/web/lib/motion.ts` and must respect `prefers-reduced-motion`.
+  Scroll work uses `IntersectionObserver` (`components/ui/Reveal.tsx`), never a scroll handler.
+- **Wide content scrolls inside itself.** Every `table.datagrid`, code block and payload sits in a
+  `scrollable-x` container; the page body must never scroll sideways.
+- `globals.css` is excluded from Biome in `biome.json` — its parser rejects Tailwind v4 at-rules
+  (`@theme`, `@utility`, `@custom-variant`).
+
 ## Commands
 
 ```bash
