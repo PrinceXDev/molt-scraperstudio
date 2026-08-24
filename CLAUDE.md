@@ -3,8 +3,7 @@
 Scraper Reliability Engineering for Bright Data Scraper Studio. Detect silent breakage, diagnose it,
 heal it, verify the fix — same Collector ID throughout.
 
-Read [README.md](README.md) for the full design and [docs/DECISIONS.md](docs/DECISIONS.md) for why
-things are the way they are.
+Read [README.md](README.md) for the full design.
 
 ## Collector IDs — pinned
 
@@ -26,7 +25,7 @@ exactly as described above — don't flip the flag on and click the button as a 
 | Chaos   | `c_mt101cvbc0o34ghzh`  | `https://molt-chaos.vercel.app`                |
 
 Orphaned half-built collectors awaiting manual deletion in the dashboard (unrelated to the two above —
-these are dead ends from the rejected Tailscale target, see `docs/DECISIONS.md`):
+these are dead ends from the rejected Tailscale target):
 `c_mt0yykpt1qye2ry05d`, `c_mt0z0aeu8heabltr2`.
 
 `molt add <url> <description>` now exists for onboarding further collectors at runtime (preflights size
@@ -82,7 +81,7 @@ anything visual — it carries the full rationale. The short version:
   `apps/web/lib/theme.ts`. `<html>` carries `suppressHydrationWarning` for exactly this reason.
 - **Cell classification lives in one place**: `cellSeverity` / `cellBgClass` / `cellClasses` in
   `apps/web/lib/heatmap.ts`. Do not re-derive it in a page. A `distorted` field with
-  `magnitude === 0` is `bad`, labelled `ZEROED` — see `docs/DECISIONS.md`.
+  `magnitude === 0` is `bad`, labelled `ZEROED` — it shipped as a false-green once already.
 - **Motion** goes through `apps/web/lib/motion.ts` and must respect `prefers-reduced-motion`.
   Scroll work uses `IntersectionObserver` (`components/ui/Reveal.tsx`), never a scroll handler.
 - **Wide content scrolls inside itself.** Every `table.datagrid`, code block and payload sits in a

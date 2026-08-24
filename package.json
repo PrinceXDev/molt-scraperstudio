@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "description": "Scraper Reliability Engineering for Bright Data Scraper Studio — detect silent breakage, heal it, verify the fix.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PrinceXDev/molt-scraperstudio.git"
+  },
   "packageManager": "pnpm@11.5.2",
   "engines": {
     "node": ">=20.11"

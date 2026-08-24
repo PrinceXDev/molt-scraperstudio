@@ -5,18 +5,6 @@ import {
   type HealthReport,
 } from '@molt/health';
 
-/**
- * The three-column review of a proposed fix: baseline, broken, preview.
- *
- * Extracted from the CLI's `molt review` command because it is shared with the
- * web UI's heal-review screen, and because this exact logic has already
- * produced two real bugs (see `docs/DECISIONS.md`, 2026-08-20): comparing the
- * wrong pair of numbers, and judging recovery at a stricter threshold than
- * detection. A single tested implementation is the fix for "drift between two
- * copies of the same judgement", which is precisely the failure mode this whole
- * project exists to catch elsewhere.
- */
-
 export interface ReviewRow {
   readonly field: string;
   /** `fill` compares presence; `value` compares the typical magnitude. */

@@ -126,9 +126,8 @@ const SEVERITY_BG: Record<CellSeverity, string> = {
  * The `distorted` + `magnitude === 0` special case is the whole reason this
  * function exists rather than a bare lookup: a field returning 0 instead of its
  * real value is *present* on every row, so it fills at 100% and every
- * fill-rate-based reading calls it healthy. `docs/DECISIONS.md` records this
- * shipping as a false-green on the Fleet page once already. It is a `bad`, not
- * a `warn`.
+ * fill-rate-based reading calls it healthy. This shipped as a false-green on
+ * the Fleet page once already. It is a `bad`, not a `warn`.
  */
 export function cellSeverity(cell: Cell | undefined): CellSeverity {
   if (cell === undefined) return 'unknown';
@@ -165,10 +164,9 @@ export function cellClasses(cell: Cell | undefined): string {
  *
  * Deliberately not always a percentage: a zeroed field reads 100% fill and a
  * bare number there would repeat the exact false-green signal this project
- * exists to catch (see the Fleet page, and `docs/DECISIONS.md`, "A field
- * zeroed out is broken, not degraded"). Anywhere a fill rate is displayed
- * next to a classified cell, this is what should be shown instead of the raw
- * rate.
+ * exists to catch — a field zeroed out is broken, not degraded. Anywhere a
+ * fill rate is displayed next to a classified cell, this is what should be
+ * shown instead of the raw rate.
  */
 export function cellLabel(cell: Cell | undefined): string {
   if (cell === undefined) return '—';

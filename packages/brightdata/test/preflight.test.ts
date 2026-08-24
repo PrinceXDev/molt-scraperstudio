@@ -12,7 +12,7 @@ import {
  * The preflight rules, offline.
  *
  * Each of these encodes a lesson that was paid for with a real, undeletable
- * orphan collector or a mis-generated crawler — see docs/DECISIONS.md.
+ * orphan collector or a mis-generated crawler.
  */
 
 describe('parseRobots', () => {

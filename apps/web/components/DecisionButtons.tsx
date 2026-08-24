@@ -9,10 +9,11 @@ import { approveIncident, rejectIncident } from '@/app/(fleet)/fleet/i/[id]/revi
  * The two buttons that matter.
  *
  * Approving does not just call `bdata scraper approve` — it then re-runs the
- * collector and waits for verification, because approval is not success (see
- * `docs/DECISIONS.md`, "Verification caught a bug in Molt's own approve call").
- * That is why this can take longer than a click normally would, and why the
- * pending state says so rather than just spinning.
+ * collector and waits for verification, because approval is not success. An
+ * approve that reported success once left the production template untouched
+ * and the incident stayed silently broken. That is why this can take longer
+ * than a click normally would, and why the pending state says so rather than
+ * just spinning.
  *
  * The engine deliberately *throws* rather than transitioning the incident when
  * the underlying `bdata` call itself fails to run (as opposed to running and

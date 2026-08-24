@@ -26,8 +26,8 @@ const ALL_KINDS: readonly CellKind[] = [
 
 /**
  * The rule these tests protect is the product's central claim, and it has
- * already shipped broken once — `docs/DECISIONS.md`, "The web UI's Fleet page
- * showed a false-green fill rate for a zeroed field".
+ * already shipped broken once — the web UI's own Fleet page showed a
+ * false-green fill rate for a zeroed field.
  *
  * It was also, until this phase, implemented three times: once in `lib/heatmap`
  * (dead) and once per page. These tests exist so the single surviving copy

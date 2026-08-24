@@ -1,6 +1,6 @@
 /**
- * Target preflight — every lesson from `docs/DECISIONS.md` that was learned by
- * burning a collector, turned into a check that runs *before* `scraper create`.
+ * Target preflight — every lesson learned by burning a collector, turned into
+ * a check that runs *before* `scraper create`.
  *
  * 1. **Size.** The AI-Flow intent analyser fails outright on large documents:
  *    a 1.63 MB page killed two `create` attempts at the first pipeline step

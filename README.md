@@ -13,6 +13,7 @@ Built for [Into the Scrape-Verse](https://www.wemakedevs.org/hackathons/scrape-v
 ![Bright Data](https://img.shields.io/badge/Bright%20Data-Scraper%20Studio-e5484d)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![offline](https://img.shields.io/badge/pnpm%20test-offline%2C%20no%20API%20key-informational)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 </div>
 
@@ -89,17 +90,17 @@ description from the evidence:
 
 ## Status
 
-| Capability                                                   | Status | Evidence                                                             |
-| -------------------------------------------------------------- | :----: | ---------------------------------------------------------------------- |
-| Real `create` → real `c_*` Collector ID                        |   ✅   | Two live collectors, table below                                       |
-| Drift detection (fill-rate, schema, distortion, empty harvest) |   ✅   | `packages/health`, 100% pure, no I/O                                    |
-| Heal-prompt generation from measured drift                     |   ✅   | `packages/diagnose`, ≤1000 chars, capped and tested                    |
-| Real `bdata scraper heal`, gated behind human approval          |   ✅   | `apps/sentinel` (`molt watch`/`review`/`approve`)                      |
-| Verification that closes an incident only on measured recovery |   ✅   | `Engine.check` + `runVerify`, `packages/core/test/engine.test.ts`       |
-| Scheduled unattended watch, opens a GitHub issue on drift       |   ✅   | `.github/workflows/molt-watch.yml`                                      |
-| Public playground — preflight, drift replay, live check, create |   ✅   | `apps/web/app/(site)/playground`                                       |
-| Persistent fleet database (not per-run memory)                  |   ✅   | Turso/libSQL, `packages/store`                                         |
-| Cockpit visually re-skinned onto the public design system       |   🚧   | Functionally complete; Phase 5 of the design system rollout is open    |
+| Capability                                                       | Status | Evidence                                                          |
+| ------------------------------------------------------------------ | :----: | -------------------------------------------------------------------- |
+| Real `create` → real `c_*` Collector ID                            |   ✅   | Two live collectors, table below                                     |
+| Drift detection (fill-rate, schema, distortion, empty harvest)     |   ✅   | `packages/health`, 100% pure, no I/O                                  |
+| Heal-prompt generation from measured drift                         |   ✅   | `packages/diagnose`, ≤1000 chars, capped and tested                  |
+| Real `bdata scraper heal`, gated behind human approval              |   ✅   | `apps/sentinel` (`molt watch`/`review`/`approve`)                    |
+| Verification that closes an incident only on measured recovery     |   ✅   | `Engine.check` + `runVerify`, `packages/core/test/engine.test.ts`     |
+| Scheduled unattended watch, opens a GitHub issue on drift           |   ✅   | `.github/workflows/molt-watch.yml`                                    |
+| Public playground — preflight, drift replay, live check, create    |   ✅   | `apps/web/app/(site)/playground`                                     |
+| Persistent fleet database (not per-run memory)                      |   ✅   | Turso/libSQL, `packages/store`                                       |
+| Cockpit visually re-skinned onto the public design system           |   🚧   | Functionally complete; visual pass still open                        |
 
 ## Live collectors
 
@@ -118,7 +119,51 @@ changes the markup at the same URL**, which is exactly how a real redesign reach
 node scripts/chaos-deploy.mjs 2
 ```
 
-## Quick start
+## How this uses Bright Data
+
+Molt is built *around* Scraper Studio, not beside it — every mutation is a real, recorded invocation
+of the actual CLI, never a REST reimplementation of it:
+
+- **Create** the scraper with Scraper Studio's AI generation
+  (`bdata scraper create <url> "<description>"`, wrapped by `molt add`) — preflighted for size and
+  robots.txt first, because a failed create leaves an orphan Bright Data cannot delete
+  programmatically.
+- **Run** it from the terminal (`bdata scraper run <id> <url> --json`, wrapped by `molt check`) — the
+  same command a judge would type by hand.
+- **Heal** the same collector, unchanged Collector ID, on a real site change
+  (`bdata scraper heal <id> "<prompt>"`, wrapped by `molt heal`/`molt watch`) — gated behind a human
+  decision before `bdata scraper approve --auto-save` ever runs.
+- **Consume** the structured output through the detection core (`packages/health`), which turns raw
+  rows into a health verdict, a heal prompt, and — for the scheduled workflow — a GitHub issue with
+  the exact approve command already written.
+
+The terminal remains the control plane throughout: a global terminal drawer in the web UI streams the
+exact `argv` and stdout of every `bdata` call Molt has run, so nothing the UI does is invisible or
+reimplemented against a different transport.
+
+## Architecture
+
+| Module                | Role                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `packages/health`      | **Pure.** Rows in, health verdict out. No I/O, no clock, no randomness.       |
+| `packages/brightdata`  | **The only I/O boundary.** Drives the real `bdata` CLI; redacts credentials. |
+| `packages/diagnose`    | Drift evidence → heal prompt, ≤1000 chars. Pure.                              |
+| `packages/store`       | libSQL + explicit SQL. No ORM, nothing to provision.                          |
+| `packages/core`        | The incident state machine (pure) + the engine that drives it.                |
+| `apps/sentinel`        | The `molt` CLI.                                                               |
+| `apps/web`             | Public site, docs, playground, and the fleet cockpit.                        |
+| `apps/chaos`           | The deliberately breakable target.                                           |
+
+Two rules make the rest possible:
+
+- **`@molt/health` is pure.** No network, no filesystem, no clock. If it needs the time, it takes a
+  timestamp as an argument. Every drift rule is therefore pinned by fixtures rather than verified
+  against a live website.
+- **All Bright Data I/O lives in `@molt/brightdata`.** Everything else receives its effects as injected
+  ports, so the entire incident lifecycle — approval gate, rejection, failed heal, a fix that didn't
+  work — is tested with no API key and no credits spent.
+
+## Quickstart
 
 No database to provision, no API key needed for the tests.
 
@@ -146,7 +191,7 @@ To run the web app (landing page, docs, and the public playground):
 pnpm --filter @molt/web dev
 ```
 
-## The loop, for real
+### The loop, for real
 
 ```
 $ pnpm molt check chaos
@@ -195,33 +240,7 @@ route around — and `--auto-approve` exists for when you want it gone.
 
 Exit codes are CI-shaped: `0` ok, `2` collector broken, `3` awaiting approval.
 
-## Architecture
-
-| Module                | Role                                                                        |
-| ---------------------- | ---------------------------------------------------------------------------- |
-| `packages/health`      | **Pure.** Rows in, health verdict out. No I/O, no clock, no randomness.       |
-| `packages/brightdata`  | **The only I/O boundary.** Drives the real `bdata` CLI; redacts credentials. |
-| `packages/diagnose`    | Drift evidence → heal prompt, ≤1000 chars. Pure.                              |
-| `packages/store`       | libSQL + explicit SQL. No ORM, nothing to provision.                          |
-| `packages/core`        | The incident state machine (pure) + the engine that drives it.                |
-| `apps/sentinel`        | The `molt` CLI.                                                               |
-| `apps/web`             | Public site, docs, playground, and the fleet cockpit.                        |
-| `apps/chaos`           | The deliberately breakable target.                                           |
-
-Two rules make the rest possible:
-
-- **`@molt/health` is pure.** No network, no filesystem, no clock. If it needs the time, it takes a
-  timestamp as an argument. Every drift rule is therefore pinned by fixtures rather than verified
-  against a live website.
-- **All Bright Data I/O lives in `@molt/brightdata`.** Everything else receives its effects as injected
-  ports, so the entire incident lifecycle — approval gate, rejection, failed heal, a fix that didn't
-  work — is tested with no API key and no credits spent.
-
-Mutations go through the **real CLI**, never the REST endpoints it wraps. The brief's first best
-practice is that the terminal is the UI; running the same commands a judge would type keeps that
-literally true, and every invocation is recorded verbatim and shown back.
-
-## What's verified
+## Testing
 
 ```
 Test Files  29 passed (29)
@@ -229,15 +248,17 @@ Test Files  29 passed (29)
 ```
 
 Strict TypeScript throughout, including `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.
+`pnpm test` passes offline, on a fresh clone, with no credentials — every fixture is real recorded
+Bright Data output, not a hand-written stub.
 
-The tests exist to protect specific claims:
+The tests exist to protect specific claims, not just to hit a number:
 
 - **The silent failure is caught.** Real captured output from `c_mt0z2fn11aj6lk4bdz`, with two fields
   killed: same row count, no empty harvest, `status: broken`, exactly the two dead fields named.
 - **A failed command is never mistaken for an empty harvest.** A `bdata scraper run` that crashes or
-  times out must never be recorded as a genuine zero-row baseline — see
-  [docs/DECISIONS.md](docs/DECISIONS.md) for the incident that caught this in the collector this repo
-  actually created.
+  times out must never be recorded as a genuine zero-row baseline — a real collector this repo created
+  hit exactly this during a slow first-run batch job, and the engine wrongly pinned an empty baseline
+  from it until this was fixed and tested.
 - **Approval is not success.** An approved fix that didn't restore the data reopens the incident and
   eventually escalates. Only measured recovery closes one.
 - **The retry loop converges.** The state machine is driven with every verify failing, and asserted to
@@ -253,34 +274,7 @@ The tests exist to protect specific claims:
   leaves the production template untouched — the exact bug this project caught inside its own code
   before a demo depended on it.
 
-## What went wrong along the way
-
-[docs/DECISIONS.md](docs/DECISIONS.md) is a real decision log, not a tidy retrospective. Highlights:
-
-- The first target, Tailscale's changelog, **failed twice** at the first pipeline step. Root cause: the
-  page is 1.63 MB and the intent analyser can't ingest it. The property that made it attractive —
-  574 records in one request — is what killed it.
-- The chaos site linked to `v1/v2/v3.html` so a human could compare layouts. Scraper Studio's AI read
-  those links as a **discovery surface**, generated a crawler, and baselined the wrong page.
-- Removing those links wasn't enough: per-entry `id` anchors are _also_ addressable, so the generator
-  built one page per `#fragment` and turned 60 records into **3,600 across 60 page loads**.
-- `vercel deploy --prod` reported success while the live alias kept serving the old deployment. Deploys
-  now verify the live `x-chaos-layout` header matches what was requested.
-- The review screen judged recovery on a stricter threshold than detection, and marked an obviously
-  recovered field as broken. Rendering the comparison is what exposed it.
-- A freshly created collector's very first run went into Bright Data's slow batch mode and failed
-  outright — and the engine recorded that failure as a valid, empty baseline. Fixed by making a failed
-  command a distinct outcome from a genuine empty harvest, never the same thing.
-
-## Docs
-
-|                                        |                                                          |
-| -------------------------------------- | -------------------------------------------------------- |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Every real decision, with the evidence that forced it    |
-| [CLAUDE.md](CLAUDE.md)                 | Pinned collector IDs and the verified CLI constraints    |
-| `/docs` (in the running app)           | The public-facing rewrite: quickstart, concepts, CLI reference, architecture, honest limits |
-
-## Honest limits
+## Honest limitations
 
 Worth knowing before you build, none of it hidden in a footnote:
 
@@ -290,17 +284,33 @@ Worth knowing before you build, none of it hidden in a footnote:
 - Bright Data's scrapers run in Bright Data's cloud and **cannot reach `localhost`**.
 - Credit figures anywhere in Molt are estimates, not a bill — Bright Data publishes no per-operation
   price list (`packages/brightdata/src/credits.ts` explains the reasoning).
+- A brand-new collector's very first real run can land in Bright Data's slower batch-processing path
+  rather than returning immediately — worth expecting on `molt add`/`molt check` against a target
+  that was just created.
 - The heal envelope carries `diff_summary` and `completed_steps`, both undocumented.
 - The heal pipeline includes a `request_fulfillment_validator` stage.
+
+## Roadmap
+
+- **Finish the cockpit's visual pass.** The fleet, collector, incident, and review screens are
+  functionally complete but still carry pre-redesign styling; porting them onto the public design
+  system's tokens is the last visible gap.
+- **Surface credit spend by operation, not just the total.** `summariseCredits().byKind` already
+  computes the run/heal/approve/create breakdown; it isn't rendered anywhere yet.
+- **A real-activity panel in the playground.** The Drift Replay tab demonstrates the detection core on
+  pasted data; a read-only view of the actual recorded `heal`/`approve` transcripts against the real
+  collectors would prove self-healing happened, not just that it could.
+- **A measured false-positive rate.** Run detection over a labelled corpus of known-healthy drift
+  (redesigns that didn't break anything) and publish the number, rather than asserting it.
 
 ## A note on how this was built
 
 This project was built with heavy use of Claude (Anthropic) as a coding assistant, in the open, under
 direct review — every change was read, tested, and verified against real Bright Data infrastructure
-before being kept. The decisions, the target selection, the architecture, and the bugs in
-[docs/DECISIONS.md](docs/DECISIONS.md) are real; several of them were caught specifically *because* the
-detection core was pointed at the project's own live collectors, not just at fixtures. Disclosed here
-for the same reason the rest of this README is direct about limits: honesty is the brand.
+before being kept. The decisions, the target selection, and the bugs above are real; several of them
+were caught specifically *because* the detection core was pointed at the project's own live
+collectors, not just at fixtures. Disclosed here for the same reason the rest of this README is direct
+about limits: honesty is the brand.
 
 ---
 
