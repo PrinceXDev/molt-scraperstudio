@@ -162,7 +162,11 @@ export async function openContext(options: OpenContextOptions = {}): Promise<Con
   const root = findRepoRoot(options.cwd ?? dirname(fileURLToPath(import.meta.url)));
   loadDotEnv(root);
 
-  const db = await openDatabase({ url: resolveDatabaseUrl(root) });
+  const authToken = process.env['MOLT_DATABASE_AUTH_TOKEN'];
+  const db = await openDatabase({
+    url: resolveDatabaseUrl(root),
+    ...(authToken === undefined || authToken === '' ? {} : { authToken }),
+  });
   const repo = new Repository(db);
 
   const scraper = new CliScraper({

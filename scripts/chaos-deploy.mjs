@@ -28,10 +28,24 @@ const VALID_VERSIONS = new Set(['1', '2', '3']);
 const PROJECT = 'molt-chaos';
 const LIVE_URL = 'https://molt-chaos.vercel.app';
 
+/**
+ * Quote an argument for `cmd.exe` when it contains a space.
+ *
+ * `spawn(..., { shell: true })` on Windows joins the args array into one
+ * command string without quoting each element (unlike POSIX shells, which
+ * quote array elements correctly even with `shell: true`). Any absolute path
+ * through a directory with a space — like this repo's own
+ * `D:\Home Workspace\...` — silently splits into two arguments.
+ */
+function quoteForWindowsShell(arg) {
+  if (process.platform !== 'win32' || !/\s/.test(arg)) return arg;
+  return `"${arg}"`;
+}
+
 /** Run a command, inheriting stdio, and resolve with its exit code. */
 function run(command, args, options = {}) {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(command, args.map(quoteForWindowsShell), {
       cwd: repoRoot,
       stdio: 'inherit',
       // `npx` and `pnpm` are shims on Windows, so a shell is required here.
@@ -73,7 +87,7 @@ async function main() {
 
   process.stdout.write(`\n▸ deploying ${distDir} to Vercel production\n`);
 
-  // `--name` is not optional here. Deploying a bare directory makes Vercel infer
+  // `--project` is not optional here. Deploying a bare directory makes Vercel infer
   // the project from the directory's name, so `apps/chaos/dist` silently created
   // a project called "dist" with its own alias, while molt-chaos.vercel.app went
   // on serving the previous deployment. The layout flip appeared to do nothing.
@@ -83,7 +97,7 @@ async function main() {
     distDir,
     '--prod',
     '--yes',
-    '--name',
+    '--project',
     PROJECT,
     ...rest,
   ]);
