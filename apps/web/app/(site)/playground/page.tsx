@@ -48,9 +48,9 @@ export default async function PlaygroundPage() {
           not a simulation of it. Preflight checks a URL exactly the way the intent analyser would
           before spending a <code className="font-mono text-ink">scraper create</code>; Drift replay
           runs the same detection core a live Bright Data run feeds into. Neither needs an account.
-          Live check and Create a collector call the real <code className="font-mono text-ink">bdata</code>{' '}
-          CLI against a real Bright Data account and spend real credits — and say so plainly before
-          they run.
+          Live check and Create a collector call the real{' '}
+          <code className="font-mono text-ink">bdata</code> CLI against a real Bright Data account
+          and spend real credits — and say so plainly before they run.
         </p>
       </header>
 
