@@ -30,7 +30,7 @@ Built for [Into the Scrape-Verse](https://www.wemakedevs.org/hackathons/scrape-v
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=-ba-uywfS3I">
-    <img src="https://img.youtube.com/vi/-ba-uywfS3I/hqdefault.jpg" width="560" alt="Watch: My Self-Healing Scraper Caught Itself Lying — Molt catching a silent scraper failure on real Bright Data infrastructure" />
+    <img src="assets/media/demo-thumb.png" width="560" alt="Watch: My Self-Healing Scraper Caught Itself Lying — Molt catching a silent scraper failure on real Bright Data infrastructure" />
   </a>
   <br />
   <sub>▶ <a href="https://www.youtube.com/watch?v=-ba-uywfS3I">Watch the demo on YouTube</a> — success is not a status; the data is.</sub>
